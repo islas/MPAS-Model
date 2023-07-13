@@ -282,7 +282,37 @@ module atm_core
       !
       call mpas_atm_dynamics_init(domain)
 
+
+      !
+      ! Set up interaction with Python
+      !
+      call mpas_python_setup(mesh)
+
    end function atm_core_init
+
+
+   subroutine mpas_python_setup(mesh)
+
+      type (mpas_pool_type), pointer :: mesh
+
+      real (kind=RKIND), dimension(:), pointer :: aaa, bbb, ccc
+      integer, pointer :: nCells
+
+      call mpas_pool_get_array(mesh, 'aaa', aaa)
+      call mpas_pool_get_array(mesh, 'bbb', bbb)
+      call mpas_pool_get_array(mesh, 'ccc', ccc)
+      call mpas_pool_get_dimension(mesh, 'nCells', nCells)
+
+      !
+      ! Do whatever is needed to set up the Python interpreter, and to 
+      ! make available the aaa, bbb, and ccc arrays
+      !
+      call mpas_log_write('Setting up the MPAS Python environment...')
+      call mpas_log_write('minval, maxval of aaa = $r $r', realArgs=[minval(aaa), maxval(aaa)])
+      call mpas_log_write('minval, maxval of bbb = $r $r', realArgs=[minval(bbb), maxval(bbb)])
+      call mpas_log_write('minval, maxval of ccc = $r $r', realArgs=[minval(ccc), maxval(ccc)])
+
+   end subroutine mpas_python_setup
 
 
    subroutine atm_simulation_clock_init(core_clock, configs, ierr)
@@ -706,6 +736,13 @@ module atm_core
       !   time step, and time level 2 stores the state advanced dt in time by timestep(...)
       itimestep = 1
       do while (.not. mpas_is_clock_stop_time(clock))
+
+
+         call mpas_log_write('Calling functions.py::foobar()')
+         !
+         ! Do whatever we need to call the foobar() function from the functions.py file
+         !
+         call mpas_log_write('Done calling functions.py::foobar()')
 
          currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)         

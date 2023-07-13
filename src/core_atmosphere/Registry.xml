@@ -1468,6 +1468,15 @@
                 <var name="nearestRelaxationCell" type="integer" dimensions="nCells" units="-"
                      description="For cells in the specified zone, gives the index of the nearest cell in the relaxation zone"/>
 
+                <var name="aaa" type="real" dimensions="nCells" units="-"
+                     description="Test array aaa"/>
+
+                <var name="bbb" type="real" dimensions="nCells" units="-"
+                     description="Test array bbb"/>
+
+                <var name="ccc" type="real" dimensions="nCells" units="-"
+                     description="Test array ccc"/>
+
         </var_struct>
 
         <var_struct name="state" time_levs="2">
