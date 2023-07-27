@@ -12,6 +12,8 @@ module atm_core
    use mpas_dmpar
    use mpas_log, only : mpas_log_write, mpas_log_info
    use mpas_io_units, only : mpas_new_unit, mpas_release_unit
+  !  use, intrinsic :: iso_c_binding
+   use EmbeddedInterpreter
 
    !
    ! Abstract interface for routine used to communicate halos of fields
@@ -32,6 +34,7 @@ module atm_core
    type (MPAS_Clock_type), pointer :: clock
    procedure (halo_exchange_routine), pointer :: exchange_halo_group
    character(len=StrKIND), pointer :: config_halo_exch_method
+   type( c_ptr )                   :: pythonInterpreter = c_null_ptr
 
    private :: exchange_halo_group
    private :: atm_build_halo_groups, atm_destroy_halo_groups
@@ -286,31 +289,71 @@ module atm_core
       !
       ! Set up interaction with Python
       !
-      call mpas_python_setup(mesh)
+      call mpas_python_setup(domain, mesh)
 
    end function atm_core_init
 
+  !  function getNCells() bind( C ) result( numCells )
+  !     integer( c_int ) :: numCells
+  !     integer, pointer :: nCells
+  !     call mpas_pool_get_dimension(mesh, 'nCells', nCells)
 
-   subroutine mpas_python_setup(mesh)
+  !  end function getNCells
+      
 
-      type (mpas_pool_type), pointer :: mesh
+   subroutine mpas_python_setup( domain, mesh)
+      use iso_c_binding
+      use EmbeddedInterpreter
+      use f_c_helpers
 
+      implicit none
+      type (domain_type), intent(inout) :: domain
+      type (mpas_pool_type),  pointer :: mesh
+      type (mpas_pool_type),  pointer :: python_interface
+
+      character(len=StrKIND), pointer :: pymodulesLoc
       real (kind=RKIND), dimension(:), pointer :: aaa, bbb, ccc
       integer, pointer :: nCells
+      integer( c_size_t ), dimension(1) :: numCells
+
+      call mpas_pool_get_subpool(domain % blocklist % configs, 'python_interface', python_interface )
+      ! call mpas_pool_get_config ( python_interface, 'pymodules_loc', pymodulesLoc )
+
+      call EmbeddedInterpreter_ctor( pythonInterpreter )
+      call EmbeddedInterpreter_initialize( pythonInterpreter )
+
+      ! Create our embedded modules
+      call EmbeddedInterpreter_embeddedPymoduleLoad( pythonInterpreter, f_c_string( "runtime_data" ) )
+      call EmbeddedInterpreter_embeddedPymoduleLoad( pythonInterpreter, f_c_string( "static_data"  ) )
+
+      call EmbeddedInterpreter_addToScope( pythonInterpreter,  f_c_string( "/glade/u/home/aislas/mpas/mpas-model/src/pymodules/" ) )
 
       call mpas_pool_get_array(mesh, 'aaa', aaa)
       call mpas_pool_get_array(mesh, 'bbb', bbb)
       call mpas_pool_get_array(mesh, 'ccc', ccc)
       call mpas_pool_get_dimension(mesh, 'nCells', nCells)
 
+      numCells(1) = nCells
+
       !
       ! Do whatever is needed to set up the Python interpreter, and to 
       ! make available the aaa, bbb, and ccc arrays
       !
+      ! Embed them into our runtime data & static data
+      call EmbeddedInterpreter_embedDoublePtr( pythonInterpreter, f_c_string( "runtime_data" ), f_c_string( "aaa" ), aaa, int(1, kind=c_size_t), numCells )
+      call EmbeddedInterpreter_embedDoublePtr( pythonInterpreter, f_c_string( "runtime_data" ), f_c_string( "bbb" ), bbb, int(1, kind=c_size_t), numCells )
+      call EmbeddedInterpreter_embedDoublePtr( pythonInterpreter, f_c_string( "runtime_data" ), f_c_string( "ccc" ), ccc, int(1, kind=c_size_t), numCells )
+      ! call EmbeddedInterpreter_embedInt32Value( pythonInterpreter, f_c_string( "static_data" ), f_c_string( "nCells" ), c_funloc( getNCells ) )
+
+
       call mpas_log_write('Setting up the MPAS Python environment...')
       call mpas_log_write('minval, maxval of aaa = $r $r', realArgs=[minval(aaa), maxval(aaa)])
       call mpas_log_write('minval, maxval of bbb = $r $r', realArgs=[minval(bbb), maxval(bbb)])
       call mpas_log_write('minval, maxval of ccc = $r $r', realArgs=[minval(ccc), maxval(ccc)])
+
+      ! Load in any python user modules
+      call EmbeddedInterpreter_pymoduleLoad      ( pythonInterpreter,  f_c_string( "atmo.demo" ) )
+      call EmbeddedInterpreter_pymoduleCall( pythonInterpreter,  f_c_string( "atmo.demo" ), f_c_string( "initialize" ) )
 
    end subroutine mpas_python_setup
 
@@ -609,7 +652,9 @@ module atm_core
       use mpas_timer, only : mpas_timer_start, mpas_timer_stop
       use mpas_atm_boundaries, only : mpas_atm_update_bdy_tend
       use mpas_atm_diagnostics_manager, only : mpas_atm_diag_update, mpas_atm_diag_compute, mpas_atm_diag_reset
-   
+      use EmbeddedInterpreter
+      use f_c_helpers
+
       implicit none
    
       type (domain_type), intent(inout) :: domain
@@ -738,11 +783,13 @@ module atm_core
       do while (.not. mpas_is_clock_stop_time(clock))
 
 
-         call mpas_log_write('Calling functions.py::foobar()')
+         call mpas_log_write('Calling python interpreter modules...' )
          !
-         ! Do whatever we need to call the foobar() function from the functions.py file
+         ! Do whatever we need to call interpreter modules
          !
-         call mpas_log_write('Done calling functions.py::foobar()')
+         call EmbeddedInterpreter_pymoduleCall( pythonInterpreter,  f_c_string( "atmo.demo" ), f_c_string( "main" ) )
+
+         call mpas_log_write('Done calling python interpreter modules...' )
 
          currTime = mpas_get_clock_time(clock, MPAS_NOW, ierr)
          call mpas_get_time(curr_time=currTime, dateTimeString=timeStamp, ierr=ierr)         
@@ -1036,6 +1083,8 @@ module atm_core
       use mpas_atm_diagnostics_manager, only : mpas_atm_diag_cleanup
       use mpas_atm_threading, only : mpas_atm_threading_finalize
       use atm_time_integration, only : mpas_atm_dynamics_finalize
+      use EmbeddedInterpreter
+      use f_c_helpers
    
 #ifdef DO_PHYSICS
       use mpas_atmphys_finalize
@@ -1051,6 +1100,13 @@ module atm_core
 
       clock => domain % clock
       mpas_log_info => domain % logInfo
+
+      ! Finalize individual modules first
+      call EmbeddedInterpreter_pymoduleCall( pythonInterpreter,  f_c_string( "atmo.demo" ), f_c_string( "finalize" ) )
+      ! Then base pythonInterpreter
+      call EmbeddedInterpreter_finalize( pythonInterpreter )
+      ! delete the memory
+      call EmbeddedInterpreter_dtor( pythonInterpreter )
 
       !
       ! Finalize the dynamics
