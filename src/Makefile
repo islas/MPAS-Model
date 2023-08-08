@@ -13,17 +13,21 @@ AUTOCLEAN_DEPS=
 endif
 
 ifdef PYBIND11
-MPASPYIO= -L./pymodules/ -Wl,--whole-archive -lmpaspyio -Wl,--no-whole-archive -L$(PYIO_LIBDIR) -lpyio -lstdc++
 PY_INC     := $(shell python3-config --includes)
 PY_CFLAGS  := $(shell python3-config --cflags)
 # https://stackoverflow.com/a/74876957
 PY_LDFLAGS := $(shell python3-config --ldflags --embed)
+PY_ROOTPATH:= $(shell python3-config --prefix )
+PY_RPATH   := -Wl,-rpath $(PY_ROOTPATH)/lib
+
+PYIO_LIBDIR= $(PYIO_ROOT)/lib
+MPASPYIO= -L./pymodules/ -Wl,--whole-archive -lmpaspyio -Wl,--no-whole-archive -L$(PYIO_LIBDIR) -Wl,-rpath $(PYIO_LIBDIR) -lpyio -lstdc++
 endif
 
 all: mpas
 
 mpas: $(AUTOCLEAN_DEPS) externals frame ops dycore drver
-	$(LINKER) $(LDFLAGS) -o $(EXE_NAME) driver/*.o -L. -ldycore -lops -lframework $(LIBS) $(PY_LDFLAGS) $(MPASPYIO) -I./external/esmf_time_f90 -L./external/esmf_time_f90 -lesmf_time
+	$(LINKER) $(LDFLAGS) -o $(EXE_NAME) driver/*.o -L. -ldycore -lops -lframework $(LIBS) $(PY_RPATH) $(PY_LDFLAGS) $(MPASPYIO) -I./external/esmf_time_f90 -L./external/esmf_time_f90 -lesmf_time
 
 externals: $(AUTOCLEAN_DEPS)
 	( cd external; $(MAKE) FC="$(FC)" SFC="$(SFC)" CC="$(CC)" SCC="$(SCC)" FFLAGS="$(FFLAGS)" CFLAGS="$(CFLAGS)" CPP="$(CPP)" NETCDF="$(NETCDF)" CORE="$(CORE)" all )

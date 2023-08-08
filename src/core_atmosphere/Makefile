@@ -12,12 +12,18 @@ ifdef PHYSICS
     PHYS_OBJS = libphys/*.o
 endif
 
+ifdef PYBIND11
+    MPASPYIO=mpaspyio
+    MPASPYIO_LIB=../pymodules/libmpaspyio.a
+    PYIO_INC=-I$(PYIO_ROOT)/include -I$(PYIO_ROOT)/include/pyio
+endif
+
 OBJS = mpas_atm_core.o \
        mpas_atm_core_interface.o \
        mpas_atm_dimensions.o \
        mpas_atm_threading.o
 
-all: $(PHYSCORE) dycore diagcore atmcore utilities mpaspyio
+all: $(PHYSCORE) dycore diagcore atmcore utilities $(MPASPYIO)
 
 core_reg:
 	$(CPP) $(CPPFLAGS) $(CPPINCLUDES) $(PHYSICS) Registry.xml > Registry_processed.xml
@@ -54,12 +60,12 @@ utilities: $(PHYSCORE)
 mpaspyio: core_reg
 	( cd ../pymodules; $(MAKE) all )
 
-atmcore: $(PHYSCORE) dycore diagcore $(OBJS) mpaspyio
-	ar -ru libdycore.a $(OBJS) dynamics/*.o $(PHYS_OBJS) diagnostics/*.o ../pymodules/libmpaspyio.a
+atmcore: $(PHYSCORE) dycore diagcore $(OBJS) $(MPASPYIO)
+	ar -ru libdycore.a $(OBJS) dynamics/*.o $(PHYS_OBJS) diagnostics/*.o $(MPASPYIO_LIB)
 
 mpas_atm_core_interface.o: mpas_atm_core.o
 
-mpas_atm_core.o: dycore mpaspyio diagcore mpas_atm_threading.o
+mpas_atm_core.o: dycore $(MPASPYIO) diagcore mpas_atm_threading.o
 
 mpas_atm_dimensions.o:
 
@@ -83,7 +89,7 @@ clean:
 	$(RM) $@ $*.mod
 ifeq "$(GEN_F90)" "true"
 	$(CPP) $(CPPFLAGS) $(PHYSICS) $(CPPINCLUDES) -I./inc $< > $*.f90
-	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework -I../operators -I./physics -I./dynamics -I./diagnostics -I./physics/physics_wrf -I./physics/physics_mmm -I../external/esmf_time_f90 -I$(PYIO_INC) -I$(PYIO_INC)/pyio/
+	$(FC) $(FFLAGS) -c $*.f90 $(FCINCLUDES) -I../framework -I../operators -I./physics -I./dynamics -I./diagnostics -I./physics/physics_wrf -I./physics/physics_mmm -I../external/esmf_time_f90 $(PYIO_INC)
 else
-	$(FC) $(CPPFLAGS) $(PHYSICS) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I./inc -I../framework -I../operators -I./physics -I./dynamics -I./diagnostics -I./physics/physics_wrf -I./physics/physics_mmm -I../external/esmf_time_f90 -I$(PYIO_INC) -I$(PYIO_INC)/pyio/
+	$(FC) $(CPPFLAGS) $(PHYSICS) $(FFLAGS) -c $*.F $(CPPINCLUDES) $(FCINCLUDES) -I./inc -I../framework -I../operators -I./physics -I./dynamics -I./diagnostics -I./physics/physics_wrf -I./physics/physics_mmm -I../external/esmf_time_f90 $(PYIO_INC)
 endif
