@@ -293,13 +293,6 @@ module atm_core
 
    end function atm_core_init
 
-  !  function getNCells() bind( C ) result( numCells )
-  !     integer( c_int ) :: numCells
-  !     integer, pointer :: nCells
-  !     call mpas_pool_get_dimension(mesh, 'nCells', nCells)
-
-  !  end function getNCells
-      
 
    subroutine mpas_python_setup( domain, mesh)
       use iso_c_binding
@@ -332,8 +325,7 @@ module atm_core
       call mpas_pool_get_array(mesh, 'bbb', bbb)
       call mpas_pool_get_array(mesh, 'ccc', ccc)
       call mpas_pool_get_dimension(mesh, 'nCells', nCells)
-
-      numCells(1) = nCells
+      numCells(1)   = nCells
 
       !
       ! Do whatever is needed to set up the Python interpreter, and to 
@@ -343,7 +335,7 @@ module atm_core
       call EmbeddedInterpreter_embedDoublePtr( pythonInterpreter, f_c_string( "runtime_data" ), f_c_string( "aaa" ), aaa, int(1, kind=c_size_t), numCells )
       call EmbeddedInterpreter_embedDoublePtr( pythonInterpreter, f_c_string( "runtime_data" ), f_c_string( "bbb" ), bbb, int(1, kind=c_size_t), numCells )
       call EmbeddedInterpreter_embedDoublePtr( pythonInterpreter, f_c_string( "runtime_data" ), f_c_string( "ccc" ), ccc, int(1, kind=c_size_t), numCells )
-      ! call EmbeddedInterpreter_embedInt32Value( pythonInterpreter, f_c_string( "static_data" ), f_c_string( "nCells" ), c_funloc( getNCells ) )
+      call EmbeddedInterpreter_embedInt32PtrScalar( pythonInterpreter, f_c_string( "static_data" ), f_c_string( "nCells" ), nCells )
 
 
       call mpas_log_write('Setting up the MPAS Python environment...')
