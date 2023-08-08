@@ -13,10 +13,11 @@ AUTOCLEAN_DEPS=
 endif
 
 ifdef PYBIND11
-MPASPYIO= -L./pymodules/ -Wl,--whole-archive -lmpaspyio -Wl,--no-whole-archive -L$(PYIO_LIBDIR) -lpyio -lpython3.11 -lstdc++
+MPASPYIO= -L./pymodules/ -Wl,--whole-archive -lmpaspyio -Wl,--no-whole-archive -L$(PYIO_LIBDIR) -lpyio -lstdc++
 PY_INC     := $(shell python3-config --includes)
 PY_CFLAGS  := $(shell python3-config --cflags)
-PY_LDFLAGS := $(shell python3-config --ldflags)
+# https://stackoverflow.com/a/74876957
+PY_LDFLAGS := $(shell python3-config --ldflags --embed)
 endif
 
 all: mpas
