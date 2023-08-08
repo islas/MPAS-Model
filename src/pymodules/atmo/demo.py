@@ -1,5 +1,5 @@
 import os
-# import numpy
+import numpy as  np
 import runtime_data
 import static_data
 
@@ -20,3 +20,4 @@ def main( ) :
   print( type( aaa ) )
   print( aaa.flags )
 
+  aaa[:] = np.random.normal( loc=0.0, scale=1.0, size=aaa.size )[:]
