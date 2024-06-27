@@ -1,7 +1,7 @@
 {
   "submit_options" :
   {
-    "timelimit" : "00:20:00",
+    "timelimit" : "00:15:00",
     "working_directory" : "..",
     "arguments" :
     {
@@ -56,7 +56,7 @@
   {
     "submit_options" :
     {
-      "hsn.de.hpc" : { "timelimit" : "00:45:00" }
+      "hsn.de.hpc" : { "timelimit" : "00:20:00" }
     },
     "steps" :
     {
