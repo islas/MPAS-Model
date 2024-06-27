@@ -29,7 +29,7 @@
       {
         "base_env_numprocs"      : [ "-e", "NUM_PROCS=16" ],
         "very_last_modules"       : [  "cray-mpich", "parallel-netcdf" ],
-        ".*gnu.*::test_modules"   : [ "gcc" ],
+        ".*gnu.*::test_modules"   : [ "gcc/12.2.0" ],
         ".*intel(?!-llvm).*::test_modules" : [ "intel-classic" ],
         ".*intel-llvm.*::test_modules"     : [ "intel-oneapi" ],
         ".*nvhpc.*::test_modules"   : [ "nvhpc" ],
