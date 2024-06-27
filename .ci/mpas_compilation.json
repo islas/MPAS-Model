@@ -9,9 +9,9 @@
 
       ".*make.*::args_build_core"     : [ "-c", "atmosphere" ],
       ".*debug.*::args_build_debug"     : [ "-d" ],
-      ".*make.*::args_build_options"     : [ "-b", "-j $NUM_PROCS $PRECISION" ],
+      ".*make.*::args_build_options"     : [ "-b", "-j $NUM_PROCS $PRECISION_OPT" ],
  
-      ".*make.*double.*::args_build_precision" : [ "-e", "PRECISION=double" ], 
+      ".*make.*double.*::args_build_precision" : [ "-e", "PRECISION_OPT=PRECISION=double" ], 
 
       ".*make.*gnu.*::args_target"     : [ "-t", "gnu" ],
       ".*make.*intel(?!-llvm).*::args_target"   : [ "-t", "ifort" ],
