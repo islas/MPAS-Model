@@ -40,7 +40,7 @@ jobs:
             tests :
               - make-gnu
               - make-intel
-              - make-pgi
+              - make-nvhpc
 
     uses : ./.github/workflows/test_workflow.yml
     with :
