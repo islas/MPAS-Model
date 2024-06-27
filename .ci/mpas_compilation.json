@@ -47,7 +47,7 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
@@ -57,7 +57,7 @@
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "optimized" : "afterany" }
       },
-      "optmized-double" :
+      "optimized-double" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug-double" : "afterany" }
@@ -76,7 +76,7 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
@@ -86,7 +86,7 @@
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "optimized" : "afterany" }
       },
-      "optmized-double" :
+      "optimized-double" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug-double" : "afterany" }
@@ -105,7 +105,7 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
@@ -115,7 +115,7 @@
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "optimized" : "afterany" }
       },
-      "optmized-double" :
+      "optimized-double" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug-double" : "afterany" }
@@ -130,7 +130,7 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
@@ -140,7 +140,7 @@
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "optimized" : "afterany" }
       },
-      "optmized-double" :
+      "optimized-double" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug-double" : "afterany" }
