@@ -9,7 +9,9 @@
 
       ".*make.*::args_build_core"     : [ "-c", "atmosphere" ],
       ".*debug.*::args_build_debug"     : [ "-d" ],
-      ".*make.*::args_build_options"     : [ "-b", "-j $NUM_PROCS" ],
+      ".*make.*::args_build_options"     : [ "-b", "-j $NUM_PROCS $PRECISION" ],
+ 
+      ".*make.*double.*::args_build_precision" : [ "-e", "PRECISION=double" ], 
 
       ".*make.*gnu.*::args_target"     : [ "-t", "gnu" ],
       ".*make.*intel(?!-llvm).*::args_target"   : [ "-t", "ifort" ],
@@ -49,6 +51,16 @@
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optmized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   },
@@ -68,6 +80,16 @@
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optmized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   },
@@ -87,6 +109,16 @@
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optmized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   },
@@ -102,6 +134,16 @@
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optmized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   }
