@@ -14,7 +14,7 @@
       ".*make.*gnu.*::args_target"     : [ "-t", "gnu" ],
       ".*make.*intel(?!-llvm).*::args_target"   : [ "-t", "ifort" ],
       ".*make.*intel-llvm.*::args_target"   : [ "-t", "DNE" ],
-      ".*make.*pgi.*::args_target"   : [ "-t", "pgi" ]
+      ".*make.*nvhpc.*::args_target"   : [ "-t", "nvhpc" ]
     },
     "hsn.de.hpc"  :
     {
@@ -32,7 +32,7 @@
         ".*gnu.*::test_modules"   : [ "gcc" ],
         ".*intel(?!-llvm).*::test_modules" : [ "intel-classic" ],
         ".*intel-llvm.*::test_modules"     : [ "intel-oneapi" ],
-        ".*pgi.*::test_modules"   : [ "nvhpc" ],
+        ".*nvhpc.*::test_modules"   : [ "nvhpc" ],
         ".*cmake.*::test_modules_cmake" : [ "cmake/3.22.0" ]
       }
     }
@@ -90,7 +90,7 @@
       }
     }
   },
-  "make-pgi" :
+  "make-nvhpc" :
   {
     "steps" :
     {
