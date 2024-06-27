@@ -1,0 +1,109 @@
+{
+  "submit_options" :
+  {
+    "timelimit" : "00:20:00",
+    "working_directory" : "..",
+    "arguments" :
+    {
+      "base_env_numprocs"      : [ "-e", "NUM_PROCS=4" ],
+
+      ".*make.*::args_build_core"     : [ "-c", "atmosphere" ],
+      ".*debug.*::args_build_debug"     : [ "-d" ],
+      ".*make.*::args_build_options"     : [ "-b", "-j $NUM_PROCS" ],
+
+      ".*make.*gnu.*::args_target"     : [ "-t", "gnu" ],
+      ".*make.*intel(?!-llvm).*::args_target"   : [ "-t", "ifort" ],
+      ".*make.*intel-llvm.*::args_target"   : [ "-t", "DNE" ],
+      ".*make.*pgi.*::args_target"   : [ "-t", "pgi" ]
+    },
+    "hsn.de.hpc"  :
+    {
+      "submission" : "PBS",
+      "queue"      : "main",
+      "hpc_arguments"  : 
+      {
+        "node_select" : { "-l " : { "select"       : 1, "ncpus" : 16 } },
+        "priority"    : { "-l " : { "job_priority" : "economy"       } }
+      },
+      "arguments"  : 
+      {
+        "base_env_numprocs"      : [ "-e", "NUM_PROCS=16" ],
+        "very_last_modules"       : [ "pnetcdf" ],
+        ".*gnu.*::test_modules"   : [ "gcc" ],
+        ".*intel(?!-llvm).*::test_modules" : [ "intel-classic" ],
+        ".*intel-llvm.*::test_modules"     : [ "intel-oneapi" ],
+        ".*pgi.*::test_modules"   : [ "nvhpc" ],
+        "test_modules_mpi" : [ "cray-mpich" ],
+        ".*cmake.*::test_modules_cmake" : [ "cmake/3.22.0" ]
+      }
+    }
+  },
+  "make-gnu" :
+  {
+    "steps" :
+    {
+      "debug" :
+      {
+        "command"      : ".ci/tests/build.sh"
+      },
+      "optmized" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug" : "afterany" }
+      }
+    }
+  },
+  "make-intel" :
+  {
+    "submit_options" :
+    {
+      "hsn.de.hpc" : { "timelimit" : "00:45:00" }
+    },
+    "steps" :
+    {
+      "debug" :
+      {
+        "command"      : ".ci/tests/build.sh"
+      },
+      "optmized" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug" : "afterany" }
+      }
+    }
+  },
+  "make-intel-llvm" :
+  {
+    "submit_options" :
+    {
+      "hsn.de.hpc" : { "timelimit" : "00:45:00" }
+    },
+    "steps" :
+    {
+      "debug" :
+      {
+        "command"      : ".ci/tests/build.sh"
+      },
+      "optmized" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug" : "afterany" }
+      }
+    }
+  },
+  "make-pgi" :
+  {
+    "steps" :
+    {
+      "debug" :
+      {
+        "command"      : ".ci/tests/build.sh"
+      },
+      "optmized" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug" : "afterany" }
+      }
+    }
+  }
+}
