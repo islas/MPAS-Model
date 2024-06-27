@@ -1,0 +1,62 @@
+name: Regression Suite
+run-name : ${{ github.event_name == 'push' && 'CI' || github.event.label.name }} (${{ github.event_name }})
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    types:    [ labeled ]
+
+
+# Write our tests out this way for easier legibility
+# testsSet    :
+#   - key : value
+#     key : value
+#     tests :
+#       - value
+#       - value
+#   - < next test >
+# Specify accounts specific to each HPC resource
+# https://stackoverflow.com/a/68940067
+jobs:
+  buildtests:
+    if : ${{ github.event.label.name == 'compile-tests' || github.event.label.name == 'all-tests' || github.event_name == 'push' }}
+    strategy:
+      max-parallel: 4
+      fail-fast: false
+      matrix:
+      
+        testSet  :
+          - host : derecho
+            archive : /glade/work/aislas/github/runners/mpas/derecho/logs/
+            account : NMMM0012
+            name : "Make Compilation Tests"
+            id   : make-tests
+            fileroot : mpas_compilation
+            args : -j='{"node_select":{"-l ":{"select":1}}}'
+            pool  : 8
+            tpool : 1
+            mkdirs : true
+            tests :
+              - make-gnu
+              - make-intel
+              - make-pgi
+
+    uses : ./.github/workflows/test_workflow.yml
+    with :
+      label    : compile-tests
+      archive  : ${{ matrix.testSet.archive }}
+      name     : ${{ matrix.testSet.name }}
+      id       : ${{ matrix.testSet.id }}
+      host     : ${{ matrix.testSet.host }}
+      fileroot : ${{ matrix.testSet.fileroot }}
+      account  : ${{ matrix.testSet.account }}
+      tests    : ${{ toJson( matrix.testSet.tests ) }}
+      mkdirs   : ${{ matrix.testSet.mkdirs }}
+      args     : ${{ matrix.testSet.args }}
+      pool     : ${{ matrix.testSet.pool }}
+      tpool    : ${{ matrix.testSet.tpool }}
+    permissions:
+      contents: read
+      pull-requests: write
+    name : Test ${{ matrix.testSet.name }} on ${{ matrix.testSet.host }}
