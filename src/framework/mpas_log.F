@@ -39,9 +39,11 @@
 
 module mpas_log
 
+   use, intrinsic :: iso_c_binding
    use mpas_derived_types
    use mpas_abort, only : mpas_dmpar_global_abort
    use mpas_io_units, only : mpas_new_unit, mpas_release_unit
+   use mpas_trace_handler
 
    implicit none
    private
@@ -72,7 +74,7 @@ module mpas_log
    character(len=16), parameter, private :: messagePrefixError = "ERROR: "
    character(len=16), parameter, private :: messagePrefixCritical = "CRITICAL ERROR: "
 
-
+   type( c_ptr ), private           :: traceHandlerPtr = c_null_ptr
 !***********************************************************************
 
 
@@ -97,6 +99,11 @@ module mpas_log
 !-----------------------------------------------------------------------
 
    subroutine mpas_log_init(coreLogInfo, domain, unitNumbers, err)
+      use mpas_c_interfacing, only : mpas_f_to_c_string_ret
+      use mpas_derived_types, only : mpas_pool_type
+      use mpas_pool_routines
+
+      implicit none
 
       !-----------------------------------------------------------------
       ! input variables
@@ -118,6 +125,8 @@ module mpas_log
       !-----------------------------------------------------------------
       ! local variables
       !-----------------------------------------------------------------
+      type (mpas_pool_type), pointer :: development
+      character( len=StrKind )             :: trace_levels
       character(len=16) :: taskString  !< variable to build the task number as a string with appropriate zero padding
       character(len=4) :: domainString  !< variable to store the domain number as a string with appropriate zero padding
       integer :: unitNumber !< local variable used to get a unit number
@@ -286,6 +295,15 @@ module mpas_log
          mpas_log_info % errorLog % unitNum = unitNumber
 
       endif
+
+
+      ! Initialize the trace handler object
+      call mpas_pool_get_subpool( domain % blocklist % structs, "development", development )
+      call mpas_pool_get_config ( development, "trace_level", trace_levels )
+      call TraceHandler_ctor( traceHandlerPtr )
+
+      ! Set info from nml input
+      call TraceHandler_addTraces( traceHandlerPtr, mpas_f_to_c_string_ret( trace_levels ) )
 
       if (present(err)) then
          err = err_tmp ! !Currently a nonzero err_tmp will never get this far!)
@@ -712,6 +730,9 @@ module mpas_log
          close(mpas_log_info % outputLog % unitNum, iostat = err)
          call mpas_release_unit(mpas_log_info % outputLog % unitNum)
       endif
+
+      ! delete trace handler on the C/C++ side to let it call its dtor
+      call TraceHandler_dtor( traceHandlerPtr )
 
       ! Note: should not need to close an err file.  If these are open, they are intended to quickly lead to abort
       ! where the abort routine will close them, and this routine is never reached.
