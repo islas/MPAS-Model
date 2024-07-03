@@ -448,6 +448,11 @@
                      units="-"
                      description="Whether to use GPU-aware MPI for halo exchanges. GPU-aware MPI is only implemented for config_halo_exch_method='mpas_halo'"
                      possible_values=".true. or .false."/>
+                <nml_option name="trace_level" type="character" default_value="0"
+                     units="-"
+                     description="Adjust trace levels for debug purposes"
+                     possible_values="Series of [a single number or series of tags delimited by ::] then delimited by , e.g 2, module_io.F::9"
+                     />
         </nml_record>
 
 #ifdef MPAS_USE_MUSICA

@@ -39,7 +39,10 @@ OBJS = mpas_kind_types.o \
        mpas_ptscotch_interface.o \
        ptscotch_interface.o \
        mpas_stream_inquiry.o \
-       stream_inquiry.o
+       stream_inquiry.o \
+       mpas_trace_handler.o \
+       string.o \
+       TraceHandler.o
 
 all: framework $(DEPS)
 
@@ -63,7 +66,7 @@ mpas_abort.o: mpas_kind_types.o mpas_io_units.o mpas_threading.o
 
 mpas_constants.o: mpas_kind_types.o
 
-mpas_log.o: mpas_derived_types.o mpas_io_units.o mpas_abort.o mpas_threading.o mpas_c_interfacing.o
+mpas_log.o: mpas_derived_types.o mpas_io_units.o mpas_abort.o mpas_threading.o mpas_c_interfacing.o mpas_trace_handler.o
 
 mpas_attlist.o: mpas_kind_types.o mpas_io_units.o mpas_derived_types.o
 
