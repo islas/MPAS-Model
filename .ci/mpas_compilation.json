@@ -1,7 +1,7 @@
 {
   "submit_options" :
   {
-    "timelimit" : "00:20:00",
+    "timelimit" : "00:15:00",
     "working_directory" : "..",
     "arguments" :
     {
@@ -9,12 +9,14 @@
 
       ".*make.*::args_build_core"     : [ "-c", "atmosphere" ],
       ".*debug.*::args_build_debug"     : [ "-d" ],
-      ".*make.*::args_build_options"     : [ "-b", "-j $NUM_PROCS" ],
+      ".*make.*::args_build_options"     : [ "-b", "-j $NUM_PROCS $PRECISION_OPT" ],
+ 
+      ".*make.*double.*::args_build_precision" : [ "-e", "PRECISION_OPT=PRECISION=double" ], 
 
       ".*make.*gnu.*::args_target"     : [ "-t", "gnu" ],
       ".*make.*intel(?!-llvm).*::args_target"   : [ "-t", "ifort" ],
       ".*make.*intel-llvm.*::args_target"   : [ "-t", "DNE" ],
-      ".*make.*pgi.*::args_target"   : [ "-t", "pgi" ]
+      ".*make.*nvhpc.*::args_target"   : [ "-t", "nvhpc" ]
     },
     "hsn.de.hpc"  :
     {
@@ -29,10 +31,10 @@
       {
         "base_env_numprocs"      : [ "-e", "NUM_PROCS=16" ],
         "very_last_modules"       : [  "cray-mpich", "parallel-netcdf" ],
-        ".*gnu.*::test_modules"   : [ "gcc" ],
+        ".*gnu.*::test_modules"   : [ "gcc/12.2.0" ],
         ".*intel(?!-llvm).*::test_modules" : [ "intel-classic" ],
         ".*intel-llvm.*::test_modules"     : [ "intel-oneapi" ],
-        ".*pgi.*::test_modules"   : [ "nvhpc" ],
+        ".*nvhpc.*::test_modules"   : [ "nvhpc" ],
         ".*cmake.*::test_modules_cmake" : [ "cmake/3.22.0" ]
       }
     }
@@ -45,10 +47,20 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optimized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   },
@@ -56,7 +68,7 @@
   {
     "submit_options" :
     {
-      "hsn.de.hpc" : { "timelimit" : "00:45:00" }
+      "hsn.de.hpc" : { "timelimit" : "00:20:00" }
     },
     "steps" :
     {
@@ -64,10 +76,20 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optimized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   },
@@ -83,14 +105,24 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optimized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   },
-  "make-pgi" :
+  "make-nvhpc" :
   {
     "steps" :
     {
@@ -98,10 +130,20 @@
       {
         "command"      : ".ci/tests/build.sh"
       },
-      "optmized" :
+      "optimized" :
       {
         "command"      : ".ci/tests/build.sh",
         "dependencies" : { "debug" : "afterany" }
+      },
+      "debug-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "optimized" : "afterany" }
+      },
+      "optimized-double" :
+      {
+        "command"      : ".ci/tests/build.sh",
+        "dependencies" : { "debug-double" : "afterany" }
       }
     }
   }
