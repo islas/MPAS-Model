@@ -70,19 +70,20 @@ TraceHandler_dtor( mpas::TraceHandler **ppObj )
 
 void
 TraceHandler_addTraces(
-                  mpas::TraceHandler *pObj,
-                  char *specifications
-                  )
+                        mpas::TraceHandler *pObj,
+                        char *specifications
+                        )
 {
   pObj->addTraces( std::string( specifications ) );
 }
 
 bool
 TraceHandler_canLog(
-              mpas::TraceHandler *pObj,
-              int traceLevel,
-              char *tags
-              )
+                    mpas::TraceHandler *pObj,
+                    int traceLevel,
+                    char *tags,
+                    char *file
+                    )
 {
   std::set< std::string > tagsTokenized;
   std::vector< std::string > tokens = mpas::string::tokenize( std::string( tags ), ",", true );
@@ -96,6 +97,8 @@ TraceHandler_canLog(
       tagsTokenized.insert( *it );
     }
   }
+
+  tagsTokenized.insert( std::string( file ) );
 
   return pObj->canLog( static_cast< uint8_t >( traceLevel ), tagsTokenized );
 
