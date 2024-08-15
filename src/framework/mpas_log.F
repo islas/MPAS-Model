@@ -39,7 +39,6 @@
 
 module mpas_log
 
-   use, intrinsic :: iso_c_binding
    use mpas_derived_types
    use mpas_abort, only : mpas_dmpar_global_abort
    use mpas_io_units, only : mpas_new_unit, mpas_release_unit
@@ -74,7 +73,6 @@ module mpas_log
    character(len=16), parameter, private :: messagePrefixError = "ERROR: "
    character(len=16), parameter, private :: messagePrefixCritical = "CRITICAL ERROR: "
 
-   type( c_ptr ), private           :: traceHandlerPtr = c_null_ptr
 !***********************************************************************
 
 
@@ -99,11 +97,6 @@ module mpas_log
 !-----------------------------------------------------------------------
 
    subroutine mpas_log_init(coreLogInfo, domain, unitNumbers, err)
-      use mpas_c_interfacing, only : mpas_f_to_c_string_ret
-      use mpas_derived_types, only : mpas_pool_type
-      use mpas_pool_routines
-
-      implicit none
 
       !-----------------------------------------------------------------
       ! input variables
@@ -125,8 +118,6 @@ module mpas_log
       !-----------------------------------------------------------------
       ! local variables
       !-----------------------------------------------------------------
-      type (mpas_pool_type), pointer :: development
-      character( len=StrKind )             :: trace_levels
       character(len=16) :: taskString  !< variable to build the task number as a string with appropriate zero padding
       character(len=4) :: domainString  !< variable to store the domain number as a string with appropriate zero padding
       integer :: unitNumber !< local variable used to get a unit number
@@ -298,12 +289,10 @@ module mpas_log
 
 
       ! Initialize the trace handler object
-      call mpas_pool_get_subpool( domain % blocklist % structs, "development", development )
-      call mpas_pool_get_config ( development, "trace_level", trace_levels )
-      call TraceHandler_ctor( traceHandlerPtr )
+      call TraceHandler_ctor( mpas_log_info % traceHandlerPtr )
 
-      ! Set info from nml input
-      call TraceHandler_addTraces( traceHandlerPtr, mpas_f_to_c_string_ret( trace_levels ) )
+      ! Default values until nml parsing is instantiated
+      ! call TraceHandler_addTraces( traceHandlerPtr, mpas_f_to_c_string_ret( "" ) )
 
       if (present(err)) then
          err = err_tmp ! !Currently a nonzero err_tmp will never get this far!)
@@ -505,8 +494,9 @@ module mpas_log
       !-----------------------------------------------------------------
       character (len=*), intent(in) :: message  !< Input: message to be printed
       integer, intent(in), optional :: messageType !< Input: message "type"
-           !<  output (default), warning, error, critical error
-           !< (integer values defined by public parameters MPAS_LOG_* in mpas_log_types.F)
+                                                   !<  output (default), warning, error, critical error
+                                                   !< (integer values defined by public parameters MPAS_LOG_* in mpas_log_types.F)
+      character (len=*), intent(in), optional :: tags  !< Input: tags associated with the message
       logical, intent(in), optional :: masterOnly  !< Input: flag to only print message on master task
       logical, intent(in), optional :: flushNow  !< Input: flag to force a flush of the message buffer
       integer, dimension(:), intent(in), optional :: intArgs  !< Input: integer variable values to insert into message
@@ -530,11 +520,13 @@ module mpas_log
       !-----------------------------------------------------------------
       integer :: ierr, ierr_tmp
       logical :: masterOnlyWrite  !< local version of masterOnly
+      logical :: canLog
       integer :: messageTypeHere !< local version of messageType
       character(len=16) :: messagePrefix  !< the "keyword" prepended before some message types
       character(len=32) :: messageExtendedPrefix  !< the thread number plus "keyword" prepended before some message types
       logical :: flushLog !< Local variable determining if the output log should be flushed
       character(len=strKind) :: messageExpanded !< message after expansion of $ variable insertions
+      character(len=strKind) :: tagsExpanded !< message after expansion of $ variable insertions
 
       ierr = 0
 
@@ -545,6 +537,13 @@ module mpas_log
       else
          messageTypeHere = MPAS_LOG_OUT  ! Default is 'output' message
       endif
+
+       ! First determine if we can even log this particular message
+      canLog = TraceHandler_canLog(
+                                    mpas_log_info % traceHandlerPtr, &
+                                    messageTypeHere,                 &
+                                    mpas_f_to_c_string_ret( tags )   &
+                                    mpas_f_to_c_string_ret( file ) )
 
       if (present(masterOnly)) then
          masterOnlyWrite = masterOnly
@@ -732,7 +731,7 @@ module mpas_log
       endif
 
       ! delete trace handler on the C/C++ side to let it call its dtor
-      call TraceHandler_dtor( traceHandlerPtr )
+      call TraceHandler_dtor( mpas_log_info % traceHandlerPtr )
 
       ! Note: should not need to close an err file.  If these are open, they are intended to quickly lead to abort
       ! where the abort routine will close them, and this routine is never reached.

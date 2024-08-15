@@ -262,6 +262,7 @@ module atm_core_interface
 
       use mpas_derived_types, only : mpas_log_type, domain_type
       use mpas_log, only : mpas_log_init, mpas_log_open
+      use mpas_log_ext, only : mpas_log_ext_init
       use mpas_framework, only : mpas_framework_report_settings
 
       implicit none
@@ -279,6 +280,10 @@ module atm_core_interface
       ! Initialize log manager
       call mpas_log_init(logInfo, domain, unitNumbers=unitNumbers, err=local_err)
       iErr = ior(iErr, local_err)
+
+      ! Initialize log extensions
+      call mpas_log_ext_init( domain, err=local_err )
+      iErr = ior( iErr, local_err )
 
       ! Set core specific options here
       ! (At present, there are not any.  There could eventually be choices about the file naming conventions
