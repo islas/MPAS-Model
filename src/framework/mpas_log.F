@@ -484,7 +484,7 @@ module mpas_log
 !
 !-----------------------------------------------------------------------
 
-   recursive subroutine mpas_log_write(message, messageType, masterOnly, flushNow, &
+   recursive subroutine mpas_log_write( file, message, messageType, masterOnly, flushNow, &
                  intArgs, realArgs, logicArgs, err)
 
       use mpas_threading
@@ -492,7 +492,8 @@ module mpas_log
       !-----------------------------------------------------------------
       ! input variables
       !-----------------------------------------------------------------
-      character (len=*), intent(in) :: message  !< Input: message to be printed
+      character (len=*), intent(in) :: file        !< Input: filename of caller (__FILE__)
+      character (len=*), intent(in) :: message     !< Input: message to be printed
       integer, intent(in), optional :: messageType !< Input: message "type"
                                                    !<  output (default), warning, error, critical error
                                                    !< (integer values defined by public parameters MPAS_LOG_* in mpas_log_types.F)

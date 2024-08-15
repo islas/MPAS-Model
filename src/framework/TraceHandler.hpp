@@ -39,7 +39,7 @@ void TraceHandler_ctor( mpas::TraceHandler **ppObj );
 void TraceHandler_dtor( mpas::TraceHandler **ppObj );
 
 void TraceHandler_addTraces( mpas::TraceHandler *pObj, char *specifications );
-bool TraceHandler_canLog    ( mpas::TraceHandler *pObj, int traceLevel, char *tags );
+bool TraceHandler_canLog    ( mpas::TraceHandler *pObj, int traceLevel, char *tags, char *file );
 
 }
 
