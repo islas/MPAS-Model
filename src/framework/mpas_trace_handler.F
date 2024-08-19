@@ -31,7 +31,7 @@ module mpas_trace_handler
       ! return void
     end subroutine TraceHandler_addTraces
 
-    function TraceHandler_canLog          ( pTraceHandler, traceLevel, tags )             &
+    function TraceHandler_canLog          ( pTraceHandler, traceLevel, tags, file )        &
       bind( c, name="TraceHandler_canLog"           ) result( canLog )
       ! get iso_c_binding types
       import
@@ -39,6 +39,7 @@ module mpas_trace_handler
       type( c_ptr ), value :: pTraceHandler
       integer(   kind=c_int32_t ), intent( in ), value :: traceLevel
       character( kind = c_char  ), dimension(*), intent( in ) :: tags
+      character( kind = c_char  ), dimension(*), intent( in ) :: file
       logical(   kind=c_bool    ) :: canLog
       ! return bool
     end function TraceHandler_canLog

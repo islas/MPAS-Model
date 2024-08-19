@@ -69,9 +69,10 @@ module mpas_log
    !--------------------------------------------------------------------
    ! Private module variables
    !--------------------------------------------------------------------
-   character(len=16), parameter, private :: messagePrefixWarning = "WARNING: "
-   character(len=16), parameter, private :: messagePrefixError = "ERROR: "
-   character(len=16), parameter, private :: messagePrefixCritical = "CRITICAL ERROR: "
+   character(len=18), parameter, private :: messagePrefixDebug    = "DEBUG   : "
+   character(len=18), parameter, private :: messagePrefixWarning  = "WARNING : "
+   character(len=18), parameter, private :: messagePrefixError    = "ERROR   : "
+   character(len=18), parameter, private :: messagePrefixCritical = "CRITICAL ERROR : "
 
 !***********************************************************************
 
@@ -485,18 +486,19 @@ module mpas_log
 !-----------------------------------------------------------------------
 
    recursive subroutine mpas_log_write(message, messageType, masterOnly, flushNow, &
-                 intArgs, int8Args, realArgs, logicArgs, file, err)
+                 intArgs, int8Args, realArgs, logicArgs, file, tags, err)
 
       use mpas_threading
+      use mpas_c_interfacing
 
       !-----------------------------------------------------------------
       ! input variables
       !-----------------------------------------------------------------
-      character (len=*), intent(in) :: file        !< Input: filename of caller (__FILE__)
       character (len=*), intent(in) :: message     !< Input: message to be printed
       integer, intent(in), optional :: messageType !< Input: message "type"
                                                    !<  output (default), warning, error, critical error
                                                    !< (integer values defined by public parameters MPAS_LOG_* in mpas_log_types.F)
+      character (len=*), intent(in), optional :: file        !< Input: filename of caller (__FILE__)
       character (len=*), intent(in), optional :: tags  !< Input: tags associated with the message
       logical, intent(in), optional :: masterOnly  !< Input: flag to only print message on master task
       logical, intent(in), optional :: flushNow  !< Input: flag to force a flush of the message buffer
@@ -528,7 +530,8 @@ module mpas_log
       character(len=32) :: messageExtendedPrefix  !< the thread number plus "keyword" prepended before some message types
       logical :: flushLog !< Local variable determining if the output log should be flushed
       character(len=strKind) :: messageExpanded !< message after expansion of $ variable insertions
-      character(len=strKind) :: tagsExpanded !< message after expansion of $ variable insertions
+      character(len=strKind) :: tagsHere !< local version of tags
+      character(len=strKind) :: fileHere !< local version of file
 
       ierr = 0
 
@@ -540,12 +543,24 @@ module mpas_log
          messageTypeHere = MPAS_LOG_OUT  ! Default is 'output' message
       endif
 
+      if ( present(tags) ) then
+        tagsHere = tags
+      else
+        tagsHere = ""
+      endif
+
+      if ( present( file ) ) then
+        fileHere = file
+      else
+        fileHere = ""
+      endif
+
        ! First determine if we can even log this particular message
-      canLog = TraceHandler_canLog(
-                                    mpas_log_info % traceHandlerPtr, &
-                                    messageTypeHere,                 &
-                                    mpas_f_to_c_string_ret( tags )   &
-                                    mpas_f_to_c_string_ret( file ) )
+      canLog = TraceHandler_canLog(                                      &
+                                    mpas_log_info % traceHandlerPtr,     &
+                                    int( messageTypeHere, c_int32_t ),   &
+                                    mpas_f_to_c_string_ret( tagsHere ),  &
+                                    mpas_f_to_c_string_ret( fileHere ) )
 
       if (present(masterOnly)) then
          masterOnlyWrite = masterOnly
@@ -572,7 +587,8 @@ module mpas_log
       case (MPAS_LOG_CRIT)
          messagePrefix = messagePrefixCritical
       case default
-         ! TODO handle this error?
+         ! Anything not of the above is debug
+         messagePrefix = messagePrefixDebug
       end select
 
       if (mpas_threading_in_parallel()) then
