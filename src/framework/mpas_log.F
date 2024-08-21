@@ -567,6 +567,14 @@ module mpas_log
                                     mpas_f_to_c_string_ret( tagsHere ),  &
                                     mpas_f_to_c_string_ret( fileHere ) )
 
+      if ( .not. ( canLog .or. ( messageTypeHere == MPAS_LOG_CRIT ) ) ) then
+        ! Pass back err code if it was requested
+        if (present(err)) then
+          err = ierr
+        endif
+        return
+      endif
+
       if (present(masterOnly)) then
          masterOnlyWrite = masterOnly
       else
