@@ -99,6 +99,8 @@ module mpas_log
 
    subroutine mpas_log_init(coreLogInfo, domain, unitNumbers, err)
 
+      use mpas_c_interfacing, only : mpas_f_to_c_string_ret
+
       !-----------------------------------------------------------------
       ! input variables
       !-----------------------------------------------------------------
@@ -125,6 +127,7 @@ module mpas_log
       character(len=strKind) :: proposedLogFileName, proposedErrFileName
       logical :: isOpen
       character(len=StrKind) :: fileName
+      character(len=StrKind) :: defaultLogLevel
       integer :: err_tmp
 
       err_tmp = 0
@@ -293,7 +296,10 @@ module mpas_log
       call TraceHandler_ctor( mpas_log_info % traceHandlerPtr )
 
       ! Default values until nml parsing is instantiated
-      ! call TraceHandler_addTraces( traceHandlerPtr, mpas_f_to_c_string_ret( "" ) )
+      ! This will always be in the trace levels, so this exact trace will not be
+      ! able to be overridden
+      write( defaultLogLevel, "(i1)" ) MPAS_LOG_OUT
+      call TraceHandler_addTraces( mpas_log_info % traceHandlerPtr, mpas_f_to_c_string_ret( defaultLogLevel ) )
 
       if (present(err)) then
          err = err_tmp ! !Currently a nonzero err_tmp will never get this far!)
