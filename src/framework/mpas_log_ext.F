@@ -93,8 +93,8 @@ module mpas_log_ext
       err_tmp = 0
 
       ! Initialize the trace handler object
-      call mpas_pool_get_subpool( domain % blocklist % structs, "development", development )
-      call mpas_pool_get_config ( development, "trace_level", trace_levels )
+      ! call mpas_pool_get_subpool( domain % blocklist % structs, "development", development )
+      call mpas_pool_get_config ( domain % configs, "trace_level", trace_levels )
 
       ! Set info from nml input
       call TraceHandler_addTraces( mpas_log_info % traceHandlerPtr, mpas_f_to_c_string_ret( trace_levels ) )
