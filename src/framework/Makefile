@@ -59,7 +59,9 @@ mpas_framework.o: mpas_dmpar.o \
                   mpas_io_units.o \
                   mpas_block_decomp.o \
                   mpas_stream_manager.o \
-                  mpas_c_interfacing.o
+                  mpas_c_interfacing.o \
+                  mpas_log.o \
+                  mpas_log_ext.o
 
 mpas_abort.o: mpas_kind_types.o mpas_io_units.o mpas_threading.o
 
