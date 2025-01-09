@@ -68,7 +68,7 @@ module mpas_log_ext
       use mpas_derived_types, only : mpas_pool_type
       use mpas_pool_routines
       use mpas_log
-      use mpas_trace_handler
+      use mpas_debug_spec_handler
 
 
       implicit none
@@ -87,17 +87,17 @@ module mpas_log_ext
       ! local variables
       !-----------------------------------------------------------------
       type (mpas_pool_type), pointer    :: development
-      character( len=StrKind ), pointer :: trace_levels
+      character( len=StrKind ), pointer :: debug_specs
       integer :: err_tmp
 
       err_tmp = 0
 
-      ! Initialize the trace handler object
+      ! Initialize the debug handler object
       ! call mpas_pool_get_subpool( domain % blocklist % structs, "development", development )
-      call mpas_pool_get_config ( domain % configs, "trace_level", trace_levels )
+      call mpas_pool_get_config ( domain % configs, "debug_spec", debug_specs )
 
       ! Set info from nml input
-      call TraceHandler_addTraces( mpas_log_info % traceHandlerPtr, mpas_f_to_c_string_ret( trace_levels ) )
+      call DebugSpecHandler_addDebugSpecs( mpas_log_info % debugSpecHandlerPtr, mpas_f_to_c_string_ret( debug_specs ) )
 
       if (present(err)) then
          err = err_tmp 

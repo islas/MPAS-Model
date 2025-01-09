@@ -1,5 +1,5 @@
-#ifndef __mpas_Trace_hpp__
-#define __mpas_Trace_hpp__
+#ifndef __mpas_DebugSpec_hpp__
+#define __mpas_DebugSpec_hpp__
 
 #include <stdint.h>
 #include <climits>
@@ -11,16 +11,16 @@
 namespace mpas
 {
 
-struct Trace
+struct DebugSpec
 {
-  uint8_t traceLevel_;
+  uint8_t debugLevel_;
   std::set< std::string > tags_;
 
-  Trace( std::string specification )
-  : traceLevel_( UCHAR_MAX )
+  DebugSpec( std::string specifier )
+  : debugLevel_( UCHAR_MAX )
   , tags_()
   {
-    std::vector< std::string > tokens = mpas::string::tokenize( specification, "::", true );
+    std::vector< std::string > tokens = mpas::string::tokenize( specifier, "::", true );
     std::vector< std::string >::iterator found = tokens.end();
     for ( std::vector< std::string >::iterator it = tokens.begin();
           it != tokens.end();
@@ -31,7 +31,7 @@ struct Trace
       int32_t canConvert = mpas::string::numeric( tok );
       if ( canConvert != INT_MAX )
       {
-        traceLevel_ = static_cast< uint8_t >( canConvert );
+        debugLevel_ = static_cast< uint8_t >( canConvert );
         found = it;
       }
     }
@@ -47,9 +47,9 @@ struct Trace
 
   }
 
-  bool valid( uint8_t traceLevel, std::set< std::string > tags )
+  bool valid( uint8_t debugLevel, std::set< std::string > tags )
   {
-    if ( traceLevel_ >= traceLevel )
+    if ( debugLevel_ >= debugLevel )
     {
       if ( tags_.size() == 0 )
       {
@@ -78,4 +78,4 @@ struct Trace
 
 }
 
-#endif // __mpas_Trace_hpp__
+#endif // __mpas_DebugSpec_hpp__
