@@ -42,7 +42,7 @@ module mpas_log
    use mpas_derived_types
    use mpas_abort, only : mpas_dmpar_global_abort
    use mpas_io_units, only : mpas_new_unit, mpas_release_unit
-   use mpas_trace_handler
+   use mpas_debug_spec_handler
 
    implicit none
    private
@@ -292,14 +292,14 @@ module mpas_log
       endif
 
 
-      ! Initialize the trace handler object
-      call TraceHandler_ctor( mpas_log_info % traceHandlerPtr )
+      ! Initialize the debug spec handler object
+      call DebugSpecHandler_ctor( mpas_log_info % debugSpecHandlerPtr )
 
       ! Default values until nml parsing is instantiated
-      ! This will always be in the trace levels, so this exact trace will not be
+      ! This will always be in the debug specs, so this exact debug spec will not be
       ! able to be overridden
       write( defaultLogLevel, "(i1)" ) MPAS_LOG_OUT
-      call TraceHandler_addTraces( mpas_log_info % traceHandlerPtr, mpas_f_to_c_string_ret( defaultLogLevel ) )
+      call DebugSpecHandler_addDebugSpecs( mpas_log_info % debugSpecHandlerPtr, mpas_f_to_c_string_ret( defaultLogLevel ) )
 
       if (present(err)) then
          err = err_tmp ! !Currently a nonzero err_tmp will never get this far!)
@@ -561,11 +561,11 @@ module mpas_log
       endif
 
        ! First determine if we can even log this particular message
-      canLog = TraceHandler_canLog(                                      &
-                                    mpas_log_info % traceHandlerPtr,     &
-                                    int( messageTypeHere, c_int32_t ),   &
-                                    mpas_f_to_c_string_ret( tagsHere ),  &
-                                    mpas_f_to_c_string_ret( fileHere ) )
+      canLog = DebugSpecHandler_canLog(                                          &
+                                        mpas_log_info % debugSpecHandlerPtr,     &
+                                        int( messageTypeHere, c_int32_t ),   &
+                                        mpas_f_to_c_string_ret( tagsHere ),  &
+                                        mpas_f_to_c_string_ret( fileHere ) )
 
       if ( .not. ( canLog .or. ( messageTypeHere == MPAS_LOG_CRIT ) ) ) then
         ! Pass back err code if it was requested
@@ -761,8 +761,8 @@ module mpas_log
          call mpas_release_unit(mpas_log_info % outputLog % unitNum)
       endif
 
-      ! delete trace handler on the C/C++ side to let it call its dtor
-      call TraceHandler_dtor( mpas_log_info % traceHandlerPtr )
+      ! delete debug spec handler on the C/C++ side to let it call its dtor
+      call DebugSpecHandler_dtor( mpas_log_info % debugSpecHandlerPtr )
 
       ! Note: should not need to close an err file.  If these are open, they are intended to quickly lead to abort
       ! where the abort routine will close them, and this routine is never reached.

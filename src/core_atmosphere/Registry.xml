@@ -388,9 +388,9 @@
                      units="-"
                      description="Method to use for exchanging halos"
                      possible_values="`mpas_dmpar', `mpas_halo'"/>
-                <nml_option name="trace_level" type="character" default_value="0"
+                <nml_option name="debug_specs" type="character" default_value="0"
                      units="-"
-                     description="Adjust trace levels for debug purposes"
+                     description="Adjust debug specifiers for debug purposes"
                      possible_values="Series of [a single number or series of tags delimited by ::] then delimited by , e.g 2, module_io.F::9"
                      />
         </nml_record>

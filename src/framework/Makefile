@@ -39,9 +39,9 @@ OBJS = mpas_kind_types.o \
        mpas_string_utils.o \
        mpas_stream_inquiry.o \
        stream_inquiry.o \
-       mpas_trace_handler.o \
+       mpas_debug_spec_handler.o \
        string.o \
-       TraceHandler.o
+       DebugSpecHandler.o
 
 all: framework $(DEPS)
 
@@ -67,7 +67,7 @@ mpas_abort.o: mpas_kind_types.o mpas_io_units.o mpas_threading.o
 
 mpas_constants.o: mpas_kind_types.o
 
-mpas_log.o: mpas_derived_types.o mpas_io_units.o mpas_abort.o mpas_threading.o mpas_c_interfacing.o mpas_trace_handler.o
+mpas_log.o: mpas_derived_types.o mpas_io_units.o mpas_abort.o mpas_threading.o mpas_c_interfacing.o mpas_debug_spec_handler.o
 
 mpas_log_ext.o : mpas_log.o mpas_pool_routines.o
 
