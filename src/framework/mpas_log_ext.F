@@ -94,7 +94,7 @@ module mpas_log_ext
 
       ! Initialize the debug handler object
       ! call mpas_pool_get_subpool( domain % blocklist % structs, "development", development )
-      call mpas_pool_get_config ( domain % configs, "debug_spec", debug_specs )
+      call mpas_pool_get_config ( domain % configs, "debug_specs", debug_specs )
 
       ! Set info from nml input
       call DebugSpecHandler_addDebugSpecs( mpas_log_info % debugSpecHandlerPtr, mpas_f_to_c_string_ret( debug_specs ) )
