@@ -21,6 +21,16 @@ module mpas_debug_spec_handler
       ! return void
     end subroutine DebugSpecHandler_dtor
 
+    subroutine DebugSpecHandler_setDefaultDebugLevel( pDebugSpecHandler, debugLevel ) &
+      bind( c, name="DebugSpecHandler_setDefaultDebugLevel"         )
+      ! get iso_c_binding types
+      import
+      implicit none
+      type( c_ptr ), value :: pDebugSpecHandler
+      integer(   kind=c_int32_t ), intent( in ), value :: debugLevel
+      ! return void
+    end subroutine DebugSpecHandler_setDefaultDebugLevel
+
     subroutine DebugSpecHandler_addDebugSpecs        ( pDebugSpecHandler, specifiers ) &
       bind( c, name="DebugSpecHandler_addDebugSpecs"         )
       ! get iso_c_binding types
