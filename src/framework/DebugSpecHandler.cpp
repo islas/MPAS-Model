@@ -1,9 +1,10 @@
 #include "DebugSpecHandler.hpp"
 
 #include <stdint.h>
-#include <vector>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "DebugSpec.hpp"
 
@@ -13,20 +14,29 @@ namespace mpas
 bool
 DebugSpecHandler::canLog( uint8_t debugLevel, std::set< std::string > tags )
 {
-  bool valid = false;
+  size_t hash  = std::hash< std::string >{}( mpas::string::join( tags, "," ) );
 
-  for ( 
-        std::vector< mpas::DebugSpec >::iterator it = debugSpecs_.begin();
-        it != debugSpecs_.end();
-        it++ )
+  if (
+      lookup_.find( debugLevel )          == lookup_.end() ||
+      lookup_[ debugLevel ].find( hash ) == lookup_[ debugLevel ].end()
+    )
   {
-    valid = valid || it->valid( debugLevel, tags );
+    // for this debug level this hash does not exist so it has to be evaluated
+    bool   valid = false;
+    for ( 
+          std::vector< mpas::DebugSpec >::iterator it = debugSpecs_.begin();
+          it != debugSpecs_.end();
+          it++ )
+    {
+      valid = valid || it->valid( debugLevel, tags );
 
-    if ( valid ) break;
+      if ( valid ) break;
+    }
+
+    // add it to our lookup table
+    lookup_[ debugLevel ][ hash ] = valid;
   }
-
-  return valid;
-
+  return lookup_[ debugLevel ][ hash ];
 }
 
 void

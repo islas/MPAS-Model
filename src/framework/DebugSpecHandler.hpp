@@ -1,9 +1,10 @@
 #ifndef __mpas_DebugSpecHandler_hpp__
 #define __mpas_DebugSpecHandler_hpp__
 #include <stdint.h>
-#include <vector>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "DebugSpec.hpp"
 
@@ -25,8 +26,9 @@ public :
 private :
 
   std::vector< mpas::DebugSpec > debugSpecs_; ///< our traces determining what can be logged
-
-
+  std::unordered_map< 
+    uint8_t,
+    std::unordered_map< size_t, bool > > lookup_; ///< a lookup table to store pre-computed queries
 };
 
 }
