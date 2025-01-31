@@ -64,6 +64,7 @@ module mpas_log
              mpas_log_open, &
              mpas_log_finalize, &
              mpas_log_write, &
+             mpas_log_write_null, &
              mpas_log_escape_dollars
 
    !--------------------------------------------------------------------
@@ -688,6 +689,32 @@ module mpas_log
 
    !--------------------------------------------------------------------
    end subroutine mpas_log_write
+
+   recursive subroutine mpas_log_write_null( message, messageType, file, tags, masterOnly, flushNow, &
+                 intArgs, realArgs, logicArgs, err)
+
+
+      !-----------------------------------------------------------------
+      ! input variables
+      !-----------------------------------------------------------------
+      character (len=*), intent(in) :: message     !< Input: message to be printed
+      integer, intent(in), optional :: messageType !< Input: message "type"
+                                                   !<  output (default), warning, error, critical error
+                                                   !< (integer values defined by public parameters MPAS_LOG_* in mpas_log_types.F)
+      character (len=*), intent(in), optional :: file        !< Input: filename of caller (__FILE__)
+      character (len=*), intent(in), optional :: tags  !< Input: tags associated with the message
+      logical, intent(in), optional :: masterOnly  !< Input: flag to only print message on master task
+      logical, intent(in), optional :: flushNow  !< Input: flag to force a flush of the message buffer
+      integer, dimension(:), intent(in), optional :: intArgs  !< Input: integer variable values to insert into message
+      real(kind=RKIND), dimension(:), intent(in), optional :: realArgs  !< Input: real variable values to insert into message
+         !< Input: exponential notation variable values to insert into message
+      logical, dimension(:), intent(in), optional :: logicArgs  !< Input: logical variable values to insert into message
+      integer, intent(out), optional :: err !< Output: error flag
+      ! Pass back err code if it was requested
+      if (present(err)) then
+         err = 0
+      endif
+   end subroutine mpas_log_write_null
 
 
 
