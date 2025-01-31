@@ -17,6 +17,20 @@ trim( std::string input );
 int32_t
 numeric( std::string input );
 
+template< typename T >
+std::string
+join( T input, std::string delim = "" )
+{
+  std::string result = "";
+  for ( typename T::const_iterator it = input.begin(); it != input.end(); it++ )
+  {
+    result += (*it) + delim;
+  }
+  // remove last delim
+  result.erase( result.length() - delim.length() );
+  return result;
+}
+
 }
 }
 
