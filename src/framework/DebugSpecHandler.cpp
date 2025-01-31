@@ -14,29 +14,36 @@ namespace mpas
 bool
 DebugSpecHandler::canLog( uint8_t debugLevel, std::set< std::string > tags )
 {
-  size_t hash  = std::hash< std::string >{}( mpas::string::join( tags, "," ) );
-
-  if (
-      lookup_.find( debugLevel )          == lookup_.end() ||
-      lookup_[ debugLevel ].find( hash ) == lookup_[ debugLevel ].end()
-    )
+  if ( debugLevel_ >= debugLevel )
   {
-    // for this debug level this hash does not exist so it has to be evaluated
-    bool   valid = false;
-    for ( 
-          std::vector< mpas::DebugSpec >::iterator it = debugSpecs_.begin();
-          it != debugSpecs_.end();
-          it++ )
-    {
-      valid = valid || it->valid( debugLevel, tags );
-
-      if ( valid ) break;
-    }
-
-    // add it to our lookup table
-    lookup_[ debugLevel ][ hash ] = valid;
+    return true;
   }
-  return lookup_[ debugLevel ][ hash ];
+  else
+  {
+    size_t hash  = std::hash< std::string >{}( mpas::string::join( tags, "," ) );
+
+    if (
+        lookup_.find( debugLevel )          == lookup_.end() ||
+        lookup_[ debugLevel ].find( hash ) == lookup_[ debugLevel ].end()
+      )
+    {
+      // for this debug level this hash does not exist so it has to be evaluated
+      bool   valid = false;
+      for ( 
+            std::vector< mpas::DebugSpec >::iterator it = debugSpecs_.begin();
+            it != debugSpecs_.end();
+            it++ )
+      {
+        valid = valid || it->valid( debugLevel, tags );
+
+        if ( valid ) break;
+      }
+
+      // add it to our lookup table
+      lookup_[ debugLevel ][ hash ] = valid;
+    }
+    return lookup_[ debugLevel ][ hash ];
+  }
 }
 
 void
@@ -48,7 +55,13 @@ DebugSpecHandler::addDebugSpecs( std::string specifiers )
         it != tokens.end();
         it++ )
   {
-    debugSpecs_.push_back( mpas::DebugSpec( *it ) );
+    mpas::DebugSpec spec = mpas::DebugSpec( *it );
+    if ( spec.tags_.size() == 0 && spec.debugLevel_ > debugLevel_ )
+    {
+      // New default
+      this->setDefaultDebugLevel( spec.debugLevel_ );
+    }
+    debugSpecs_.push_back( spec );
   }
 }
 
@@ -76,6 +89,15 @@ DebugSpecHandler_dtor( mpas::DebugSpecHandler **ppObj )
   delete (*ppObj);
   (*ppObj) = 0;
   ppObj    = 0;
+}
+
+void
+DebugSpecHandler_setDefaultDebugLevel(
+                                mpas::DebugSpecHandler *pObj,
+                                int debugLevel
+                                )
+{
+  pObj->setDefaultDebugLevel( static_cast< uint8_t >( debugLevel ) );
 }
 
 void
