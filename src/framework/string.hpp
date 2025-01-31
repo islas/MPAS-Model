@@ -26,8 +26,11 @@ join( T input, std::string delim = "" )
   {
     result += (*it) + delim;
   }
-  // remove last delim
-  result.erase( result.length() - delim.length() );
+  // remove last delim if possible
+  if ( result.length() > delim.length() )
+  {
+    result.erase( result.length() - delim.length() );
+  }
   return result;
 }
 
