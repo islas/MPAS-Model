@@ -1,4 +1,4 @@
-.SUFFIXES: .F .c .o
+.SUFFIXES: .F .c .o .cpp
 
 DEPS := $(shell find ../core_$(CORE)/ -type f -name "*.xml" ! -name "*processed.xml")
 TYPE_DEPS := $(shell find . -type f -name "*_types.inc")
@@ -36,6 +36,7 @@ OBJS = mpas_kind_types.o \
        mpas_log.o \
        mpas_halo.o \
        mpas_string_utils.o \
+       string.o \
        mpas_stream_inquiry.o \
        stream_inquiry.o
 
@@ -131,3 +132,6 @@ endif
 
 .c.o:
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(CPPINCLUDES) -I../external/ezxml -c $<
+
+.cpp.o:
+	$(CXX) $(CXXFLAGS) -c $*.cpp $(CXINCLUDES) $(CPPINCLUDES) -lmpi_cxx -lstdc++ $(CPPFLAGS)
