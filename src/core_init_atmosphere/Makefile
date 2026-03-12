@@ -11,6 +11,7 @@ OBJS =  \
  	mpas_init_atm_queue.o \
 	mpas_init_atm_hinterp.o \
 	mpas_init_atm_static.o \
+	mpas_init_atm_calc_bdy_idx.o \
 	mpas_init_atm_gwd.o \
 	mpas_gsl_oro_data_sm_scale.o \
 	mpas_gsl_oro_data_lg_scale.o \
@@ -88,7 +89,7 @@ mpas_kd_tree.o:
 
 mpas_init_atm_llxy.o:
 
-mpas_init_atm_core_interface.o: mpas_init_atm_core.o
+mpas_init_atm_core_interface.o: mpas_init_atm_core.o mpas_init_atm_calc_bdy_idx.o
 
 mpas_init_atm_core.o: mpas_advection.o mpas_init_atm_cases.o
 

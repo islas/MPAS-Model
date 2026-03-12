@@ -4073,7 +4073,7 @@ module mpas_stream_manager
         type (MPAS_TimeInterval_type) :: filename_interval
         type (MPAS_Time_type) :: now_time
 
-        ierr = 0
+        err_local = 0
 
         if ( present(blockID) ) then
            blockID_local = blockID
@@ -4105,6 +4105,10 @@ module mpas_stream_manager
             if ( manager % errorLevel /= MPAS_STREAM_ERR_SILENT ) then
                 call mpas_log_write('ERROR: Stream ' // trim(streamID) // ' does not exist. Filename creation failed...')
             end if
+        end if
+
+        if ( present(ierr) ) then
+          ierr = err_local
         end if
 
     end subroutine mpas_get_stream_filename !}}}
@@ -5914,7 +5918,6 @@ module mpas_stream_manager
 
     end function MPAS_stream_mgr_stream_exists!}}}
  
-
 end module mpas_stream_manager
 
 

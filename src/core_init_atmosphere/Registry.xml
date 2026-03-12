@@ -44,6 +44,8 @@
                      description="The number of prescribed pressure levels in the climatological GOCART data set"/>
                 <dim name="nMonths" definition="namelist:config_months"
                      description="The number of months in a year"/>
+                <dim name="nBdyCells" decomposition="boundary"
+                    description="The total number of particles in the simlulation."/>
         </dims>
 
 
@@ -535,6 +537,8 @@
                         <var name="bdyMaskCell"/>
                         <var name="bdyMaskEdge"/>
                         <var name="bdyMaskVertex"/>
+                        <var name="bdyIndexToCellID", packages="lbcs"/>
+                        <var name="cellIDToBdyIndex", packages="lbcs"/>
                         <var name="edgeNormalVectors"/>
                         <var name="localVerticalUnitVectors"/>
                         <var name="cellTangentPlane"/>
@@ -1126,6 +1130,12 @@
 
                 <var name="bdyMaskVertex" type="integer" dimensions="nVertices" default_value="0" units="-"
                      description="Indicator of whether an vertex is an interior vertex, a relaxation-zone vertex, or a specified-zone vertex"/>
+
+                <var name="bdyIndexToCellID" type="integer" dimensions="nBdyCells" default_value="0" units="-" packages="lbcs"
+                     description="Map of only boundary cells to their respective index in the nCells index"/>
+
+                <var name="cellIDToBdyIndex" type="integer" dimensions="nCells" default_value="0" units="-" packages="lbcs"
+                     description="Map of cellID index in the nCells to nBdyCells index"/>
         </var_struct>
 
         <var_struct name="state" time_levs="1">

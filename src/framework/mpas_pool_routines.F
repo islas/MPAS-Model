@@ -105,7 +105,7 @@ module mpas_pool_routines
       module procedure mpas_pool_get_dimension_1d
    end interface
 
-   integer :: currentErrorLevel = MPAS_POOL_SILENT
+   integer :: currentErrorLevel = MPAS_POOL_WARN
 
    contains
 
