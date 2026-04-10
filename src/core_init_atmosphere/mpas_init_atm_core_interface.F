@@ -10,6 +10,8 @@ module init_atm_core_interface
    use mpas_attlist
    use mpas_derived_types
    use mpas_pool_routines
+   use mpas_stream_manager
+   use mpas_stream_list
    use mpas_dmpar
    use mpas_io_units
    use mpas_log, only : mpas_log_write
@@ -48,6 +50,7 @@ module init_atm_core_interface
       core % setup_log => init_atm_setup_log
       core % get_mesh_stream => init_atm_get_mesh_stream
       core % setup_immutable_streams => init_atm_setup_immutable_streams
+      core % setup_computed_dimensions => init_atm_setup_computed_dimensions
       core % setup_derived_dimensions => init_atm_setup_derived_dimensions
       core % setup_decomposed_dimensions => init_atm_setup_decomposed_dimensions
       core % setup_block => init_atm_setup_block
@@ -456,6 +459,34 @@ module init_atm_core_interface
 
    !***********************************************************************
    !
+   !  function init_atm_setup_computed_dimensions
+   !
+   !> \brief   Computed dimensions setup function
+   !> \author  Anthony Islas
+   !> \date    17 February 2026
+   !> \details 
+   !>  This function is intended to create the missing computed dimensions provide
+   !>  by this core type if it wasn't already read in by the input stream.
+   !
+   !-----------------------------------------------------------------------
+   function init_atm_setup_computed_dimensions(computeDimList) result(ierr)
+      use mpas_compute_dim, only : mpas_compute_dim_register_method
+      use init_atm_calc_bdy_idx, only : compute_dim_nbdy_cells
+      implicit none
+
+      type (mpas_compute_dim_list), pointer :: computeDimList
+      procedure (mpas_compute_dim_function), pointer :: func
+
+      integer :: ierr
+
+      ierr = 0
+      func => compute_dim_nbdy_cells
+      call mpas_compute_dim_register_method(computeDimList, 'nBdyCells', func, ierr)
+
+   end function init_atm_setup_computed_dimensions
+
+   !***********************************************************************
+   !
    !  function init_atm_setup_decompositions
    !
    !> \brief   Decomposition setup function
@@ -470,7 +501,7 @@ module init_atm_core_interface
 
       use mpas_derived_types, only : mpas_decomp_list, mpas_decomp_function, MPAS_DECOMP_NOERR
       use mpas_decomp, only : mpas_decomp_create_decomp_list, mpas_decomp_register_method, &
-                              mpas_uniform_decomp 
+                              mpas_uniform_decomp
 
       implicit none
 
@@ -491,7 +522,101 @@ module init_atm_core_interface
          ierr = 0
       end if
 
+      decompFunc => mpas_bdy_decomp
+
+      call mpas_decomp_register_method(decompList, 'boundary', decompFunc, ierr)
+
+      if ( ierr == MPAS_DECOMP_NOERR ) then
+         ierr = 0
+      end if
+
    end function init_atm_setup_decompositions
+
+
+   !-----------------------------------------------------------------------
+   !  function mpas_bdy_decomp
+   !
+   !> \brief MPAS Boundary decomposition function
+   !> \author Anthony Islas
+   !> \date   01/13/2026
+   !> \details
+   !>  This function provides the owned indices for boundary cells owned by this block.
+   !
+   !-----------------------------------------------------------------------
+   function mpas_bdy_decomp(block, manager, globalDimSize, numBlocks, ownedIndices) result(iErr)!{{{
+      type (block_type), intent(in) :: block
+      type (mpas_streamManager_type), intent(inout) :: manager
+      integer, intent(in) :: globalDimSize
+      integer, intent(in) :: numBlocks
+
+      integer, dimension(:), pointer :: ownedIndices
+
+
+      logical :: err
+      integer :: iErr
+      integer :: blockDimSize, blockStart, i
+      integer, pointer :: nCells
+      type( field1DInteger ), pointer :: bdyIndexToCellID_field
+      integer, dimension(:), pointer :: bdyMaskCell, bdyMaskEdge, bdyMaskVertex
+      integer, dimension(:), pointer :: bdyIndexToCellID, cellIDToBdyIndex, indexToCellID
+      character (len=StrKIND) :: filename, streamID
+      type (MPAS_stream_list_type), pointer :: input_stream
+      type (MPAS_streamInfo_type) :: streamInfo
+
+      ! File IO
+      type (MPAS_IO_Handle_type) :: inputHandle
+
+
+      iErr = 0
+      call mpas_log_write( 'In boundary decomposition function', messageType=MPAS_LOG_OUT )
+
+
+      call mpas_pool_get_array( block % allFields, 'indexToCellID_blk', indexToCellID )
+      call mpas_pool_get_dimension( block % dimensions, 'nCells', nCells )
+      iErr = block % domain % core % get_mesh_stream( block % configs, streamInfo, streamID )
+      call mpas_get_stream_filename( manager, streamID, filename=filename)
+      ! err = mpas_stream_list_query( manager % streams, filename, input_stream, ierr )
+
+      call mpas_log_write( 'Would read from input stream file ' // filename , messageType=MPAS_LOG_OUT )
+      do i = 1, nCells
+         call mpas_log_write( '  for $i index indexToCellID($i) = $i', messageType=MPAS_LOG_OUT, intArgs=[i, i, indexToCellID(i) ] )
+      end do
+
+      call mpas_log_write( 'Block $i has $i nCells', messageType=MPAS_LOG_OUT, intArgs=[block % blockID, nCells ] )
+
+
+      call mpas_pool_get_field( block % allFields, 'bdyIndexToCellID', bdyIndexToCellID_field )
+      ! call mpas_pool_get_array( block % allFields, 'cellIDToBdyIndex', cellIDToBdyIndex )
+
+      if ( .not. associated( bdyIndexToCellID_field ) ) then
+        ! We need to read in bdyMaskCell and use that to determine lbc indices
+        call mpas_log_write( 'Generating lbc indices...', messageType=MPAS_LOG_OUT )
+        call mpas_pool_get_array( block % allFields, 'bdyMaskCell', bdyMaskCell )
+      else
+        ! Read in bdyIndexToCellID and analogous cellIDToBdyIndex and use that to
+        ! inform which lbc indices we own
+        call mpas_log_write( 'Reading lbc indices...', messageType=MPAS_LOG_OUT )
+      end if
+
+      blockDimSize = globalDimSize / numBlocks
+      if ( block % blockID < mod(globalDimSize, numBlocks) ) then
+         blockDimSize = blockDimSize + 1
+      end if
+
+      blockStart = block % blockID * blockDimSize
+      if ( block % blockID >= mod(globalDimSize, numBlocks) ) then
+         blockStart = blockStart + mod(globalDimSize, numBlocks)
+      end if
+
+      allocate(ownedIndices(blockDimSize))
+      do i = 1, blockDimSize
+         ownedIndices(i) = blockStart + i
+         call mpas_log_write( '  Block $i at index $i owns true index $i', messageType=MPAS_LOG_OUT, intArgs=[block % blockID, i, ownedIndices(i) ] )
+      end do
+
+      call MPI_Barrier( block % domain % dminfo % comm, iErr )
+
+   end function mpas_bdy_decomp!}}}
 
 
    !***********************************************************************

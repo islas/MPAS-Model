@@ -422,7 +422,7 @@ module atm_core_interface
 
       use mpas_derived_types, only : mpas_decomp_list, mpas_decomp_function, MPAS_DECOMP_NOERR
       use mpas_decomp, only : mpas_decomp_create_decomp_list, mpas_decomp_register_method, &
-                              mpas_uniform_decomp
+                              mpas_uniform_decomp, mpas_bdy_decomp
 
       implicit none
 
@@ -438,6 +438,14 @@ module atm_core_interface
       decompFunc => mpas_uniform_decomp
 
       call mpas_decomp_register_method(decompList, 'uniform', decompFunc, ierr)
+
+      if ( ierr == MPAS_DECOMP_NOERR ) then
+         ierr = 0
+      end if
+
+      decompFunc => mpas_bdy_decomp
+
+      call mpas_decomp_register_method(decompList, 'boundary', decompFunc, ierr)
 
       if ( ierr == MPAS_DECOMP_NOERR ) then
          ierr = 0
