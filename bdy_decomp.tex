@@ -107,7 +107,7 @@ Where:
 
     \State $csum_{nbdy} \gets csum_k = \sum_{i=1}^{k-1} nbdy_i$ where $k = 1 ... nproc$
     \State $csum_{nread} \gets csum_k = \sum_{i=1}^{k} nread_i$ where $k = 1 ... nproc$
-    \State $id\_map_{local_{chunk}} \gets id\_map_{local}(:) + csum_{nbdy}[proc]$
+    \State $id\_map_{local_{chunk}} \gets id\_map_{local}(:)$
     \State $bdy\_map_{local_{chunk}} \gets bdy\_map_{local}(:)$
 
     \State $bdymask_{block} \gets read(io, block.ownedIndices)$
@@ -705,7 +705,7 @@ If done for each $block$, the results should yield:
     \node[below left=0mm and 1mm of cblock.south] (cind) {$indices_c$};
     \node[below left=0mm and 1mm of dblock.south] (dind) {$indices_d$};
     \matrix (arridxa) [arr, below=0mm of aind.south] {
-        21 \\ 8 \\ 12 \\ 15 \\
+        2 \\ 8 \\ 12 \\ 15 \\
     };
     \matrix (arridxb) [arr, below=0mm of bind.south] {
         9 \\ 13 \\ 14 \\ 16 \\
