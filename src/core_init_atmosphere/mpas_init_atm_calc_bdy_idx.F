@@ -11,7 +11,7 @@ module init_atm_calc_bdy_idx
     integer :: bdy_local_idx = -1
 
     ! Only valid within the head node
-    integer, dimension(:,:), pointer :: arr
+    integer, dimension(:,:), pointer :: arr => null()
 
     type(id_mapping_list), pointer :: next => null()
     type(id_mapping_list), pointer :: tail => null()
@@ -21,33 +21,33 @@ module init_atm_calc_bdy_idx
 
       procedure :: insert
       procedure :: length
-      procedure :: to_array
+      procedure :: gen_array
       final     :: id_mapping_list_destructor
   end type id_mapping_list
 
 contains
 
   subroutine insert(self, id, id_local, bdy_local)
-    class(id_mapping_list), pointer, intent(in) :: self
+    class(id_mapping_list), target, intent(inout) :: self
     integer, intent(in) :: id, id_local, bdy_local
     class(id_mapping_list), pointer :: node
-    if (.not. associated(self % head) .and. .not. associated(tail)) then
-      self % head = self
-      self % tail = self
+    if (.not. associated(self % head) .and. .not. associated(self % tail)) then
+      self % head => self
+      self % tail => self
 
       node => self
     else
-      if (associated(self % tail % next)) then
-        deallocate(self % tail % next)
-        nullify(self % taill % next)
+      if (associated(self % head % tail % next)) then
+        deallocate(self % head % tail % next)
+        nullify(self % head % tail % next)
       end if
 
-      allocate(self % tail % next)
-      node => self % tail % next
+      allocate(self % head % tail % next)
+      node => self % head % tail % next
+      self % head % tail => node
     end if
 
     node % head => self % head
-    node % tail => node
 
     node % id = id
     node % id_local_idx = id_local
@@ -55,8 +55,8 @@ contains
   end subroutine insert
 
   function length( self ) result(list_length)
-    class(id_mapping_list), pointer, intent(in) :: self
-    integer, intent(out) :: list_length
+    class(id_mapping_list), target, intent(in) :: self
+    integer :: list_length
 
     class(id_mapping_list), pointer :: node
 
@@ -66,10 +66,10 @@ contains
       list_length = list_length + 1
       node => node % next
     end do
-  end function size
+  end function length
 
   subroutine gen_array(self, recompute)
-    class(id_mapping_list), pointer, intent(in) :: self
+    class(id_mapping_list), target, intent(in) :: self
     
     integer, pointer, dimension(:,:) :: arr
     logical, optional :: recompute
@@ -101,10 +101,10 @@ contains
       node => node % next
       i = i + 1
     end do
-  end subroutine to_array
+  end subroutine gen_array
 
   subroutine id_mapping_list_destructor(self)
-    class(id_mapping_list), pointer, intent(in) :: self
+    type(id_mapping_list), intent(inout) :: self
     if (associated(self % next)) then
       deallocate(self % next)
       nullify(self % next)
@@ -140,9 +140,10 @@ contains
     type (MPAS_stream_list_type), pointer :: input_stream
     type (MPAS_streamInfo_type) :: streamInfo
     type (MPAS_IO_Handle_type), intent(out) :: handle
-    integer :: ioType
+    integer :: ioType, ierr
 
     ierr = 0
+    ierr = domain % core % get_mesh_stream( domain % configs, streamInfo, streamID )
     call mpas_get_stream_filename(domain % streamManager, streamID, filename=filename)
 
     ! Determine stream io_type
@@ -191,7 +192,7 @@ contains
     type (mpas_streamManager_type), pointer :: streamManager
 
     ! Portion to read for this proc    
-    integer, pointer :: globalDimSize
+    integer :: globalDimSize
     integer :: nRead, readStart, readEnd, i
     integer, dimension(:), allocatable :: readIndices, bdyIdxToID_tmp
     integer, dimension(:), pointer :: bdyMask
@@ -202,7 +203,7 @@ contains
     ierr = 0
     ! call mpas_pool_get_dimension(readableDimensions, globalDimNames, globalDimSize)
     ! Maybe do this instead, so that the value is always the global?
-    call mpas_io_inq_dim(inputHandle, globalDimName, globalDimSize, ierr)
+    call mpas_io_inq_dim(mesh_handle, globalDimName, globalDimSize, ierr)
 
 
     call mpas_dmpar_get_index_range(domain % dminfo, 1, globalDimSize, readStart, readEnd)
@@ -287,7 +288,7 @@ contains
   !
   !-----------------------------------------------------------------------
   function compute_dim_nbdy(streamManager, blocklist, readableDimensions, &
-                            globalDimName, bdyMaskDimName, nbdyDimName ) result(ierr)
+                            globalDimName, bdyMaskDimName, nBdyDimName ) result(ierr)
     use mpas_io
 
     implicit none
@@ -295,11 +296,11 @@ contains
     type (mpas_streamManager_type), intent(inout) :: streamManager !< Input: Stream manager structure
     type (block_type), pointer :: blocklist !< Input/Output: Linked List of blocks
     type (mpas_pool_type), intent(inout) :: readableDimensions
-    character (len=*), intent(in) :: globalDimName, bdyMaskDimName, nbdyDimName
+    character (len=*), intent(in) :: globalDimName, bdyMaskDimName, nBdyDimName
     integer :: ierr
 
     type(domain_type), pointer :: domain
-    integer :: nbdy_local, nbdy
+    integer :: nBdy_local, nBdy
     type (MPAS_IO_Handle_type) :: mesh_handle
 
     ierr = 0
@@ -308,20 +309,20 @@ contains
     ierr = open_mesh_stream( domain, mesh_handle )
     if ( ierr /= 0 ) then
       ! I don't think we can recover from this...
-      call mpas_log_write('Could not open mesh stream file for ' // nbdyDimName // ' computation!', &
+      call mpas_log_write('Could not open mesh stream file for ' // nBdyDimName // ' computation!', &
                            messageType=MPAS_LOG_ERR )
     end if
 
-    ierr = read_bdyMask_contiguous(domain, mesh_handle, globalDimName, bdyMaskDimName, nbdy_local )
+    ierr = read_bdyMask_contiguous(domain, mesh_handle, globalDimName, bdyMaskDimName, nBdy_local )
 
     ! Done with IO
     call MPAS_io_close(mesh_handle, ierr)
 
-    call mpas_dmpar_sum_int(domain % dminfo, nbdy_local, nbdy)
+    call mpas_dmpar_sum_int(domain % dminfo, nBdy_local, nBdy)
     
     ! Write value to readable dimensions
-    call mpas_pool_add_dimension(readableDimensions, nbdyDimName, nbdy)
-    call mpas_log_write('Calculated '//trim(nbdyDimName)//' = $i', intArgs=[nbdy])
+    call mpas_pool_add_dimension(readableDimensions, nBdyDimName, nBdy)
+    call mpas_log_write('Calculated '//trim(nBdyDimName)//' = $i', intArgs=[nBdy])
   end function compute_dim_nbdy
 
 
@@ -371,28 +372,6 @@ contains
 
   !***********************************************************************
   !
-  !  function compute_dim_nbdy_vertices
-  !
-  !> \brief   Computed number of boundary vertices
-  !> \author  Anthony Islas
-  !> \date    06 April 2026
-  !> \details 
-  !>  Compute the number of boundary vertices using ancillary function
-  !
-  !-----------------------------------------------------------------------
-  function compute_dim_nbdy_vertices(streamManager, blocklist, readableDimensions ) result(ierr)
-    implicit none
-
-    type (mpas_streamManager_type), intent(inout) :: streamManager !< Input: Stream manager structure
-    type (block_type), pointer :: blocklist !< Input/Output: Linked List of blocks
-    type (mpas_pool_type), intent(inout) :: readableDimensions
-    integer :: ierr
-    ierr = compute_dim_nbdy( streamManager, blocklist, readableDimensions, &
-                             'nVertices', 'bdyMaskVertex', 'nBdyVertices' )
-  end function compute_dim_nbdy_vertices
-
-  !***********************************************************************
-  !
   !  function mpas_bdy_decomp
   !
   !> \brief   Computed number of boundary cells
@@ -404,7 +383,11 @@ contains
   !-----------------------------------------------------------------------
   function mpas_bdy_decomp(block, ownedIndices, &
                            primitive, primitivePlural ) result(ierr)
+#ifdef MPAS_USE_MPI_F08
     use mpi_f08
+#else
+   use mpi
+#endif
     use mpas_io
 
     implicit none
@@ -420,26 +403,32 @@ contains
 
     ! Compute decomposition at runtime
     integer :: nRead, readStart, readEnd, nBdy, nBdy_block
-    integer :: i, j, k, id, bdyid, proc, nprocs, nown, curr_proc
+    integer :: i, j, k, id, bdyid, proc, nprocs, curr_proc
+    integer, pointer :: nown
     integer, dimension(:), pointer :: bdyMask_block, indexToID_block
 
     ! When reading in bdyIdxToID_local takes the place of the reqindices_block index tracking
-    integer, dimension(:), allocatable :: bdyIdxToID_cont, idToBdyIndex_cont, bdyIdxToID_local
-    integer, dimension(:), allocatable :: nbdy_global, nbdy_csum
+    integer, dimension(:), allocatable :: bdyIdxToID_cont, idToBdyIdx_cont, bdyIdxToID_local
+    integer, dimension(:), allocatable :: nBdy_global, nBdy_csum
     integer, dimension(:), allocatable :: nread_global, nread_csum
     integer, dimension(:), allocatable :: nreqbyproc_block, nreqbyproc_global
     type(id_mapping_list), allocatable, dimension(:) :: reqindices_block, reqindices_global
 
     ! MPI communication
+#ifdef MPAS_USE_MPI_F08
     type(mpi_request), dimension(:,:), allocatable :: requests
     type(mpi_status) :: probe_status
+#else
+    integer, dimension(:,:), allocatable :: requests
+    integer :: probe_status(MPI_STATUS_SIZE)
+#endif
 
     ! IO
     type (MPAS_IO_Handle_type) :: mesh_handle
 
     ! Generated field
-    integer, dimension(:), pointer :: bdyIdxToID, idToBdyIndex
-    integer, dimension(:), pointer :: bdyIdxToID_block, idToBdyIndex_block
+    integer, dimension(:), pointer :: bdyIdxToID, idToBdyIdx
+    integer, dimension(:), pointer :: bdyIdxToID_block, idToBdyIdx_block
 
 
     ! Names
@@ -462,35 +451,36 @@ contains
     idxToIDName    = 'indexTo' // capPrimitive // 'ID'
     globalDimName  = 'n' // capPrimitivePlural
     bdyMaskDimName = 'bdyMask' // capPrimitive
-    bdyIdxToIDName = 'bdy' // capPrimitive // 'IDTo' // capPrimitive // 'ID'
-    bdyIdxToIDName = primitive // 'IDToBdy' // capPrimitive // 'ID'
+    bdyIdxToIDName = 'bdy' // capPrimitive // 'IndexTo' // capPrimitive // 'ID'
+    idToBdyIdxName = primitive // 'IDToBdy' // capPrimitive // 'Index'
 
 
     domain => block % domain
     call mpas_pool_get_array( block % allFields, idxToIDName // '_blk', indexToID_block )
-    nown = size(indexToID_block)
+    call mpas_pool_get_dimension( block % dimensions, globalDimName, nown )
+    ! nown = size(indexToID_block)
 
     ierr = open_mesh_stream( domain, mesh_handle )
     if ( ierr /= 0 ) then
       ! I don't think we can recover from this...
-      call mpas_log_write('Could not open mesh stream file for ' // nbdyDimName // ' computation!', &
+      call mpas_log_write('Could not open mesh stream file for ' // decompDimName // ' computation!', &
                            messageType=MPAS_LOG_ERR )
     end if
 
     needCompute = .false.
-    call MPAS_io_inq_var(inputHandle, decompDimName, ierr=ierr)
+    call MPAS_io_inq_var(mesh_handle, decompDimName, ierr=ierr)
     if (ierr /= 0) then
       needCompute = .true.
     end if
 
     ierr = 0
-    proc = domain % dminfo % my_proc_id
+    proc = domain % dminfo % my_proc_id + 1
     nprocs = domain % dminfo % nprocs
 
     if (needCompute) then
       ! Allocate data structures needed for this section
-      allocate(nbdy_global(nprocs))
-      allocate(nbdy_csum(nprocs))
+      allocate(nBdy_global(nprocs))
+      allocate(nBdy_csum(nprocs))
       allocate(nread_global(nprocs))
       allocate(nread_csum(nprocs))
       allocate(reqindices_global(nprocs))
@@ -504,29 +494,32 @@ contains
       ! if blocks_per_proc > 1 err
       ierr = read_bdyMask_contiguous(domain, mesh_handle, &
                                      globalDimName, bdyMaskDimName, &
-                                     nBdy, readStart, readEnd, bdyIdxToID_cont, idToBdyIndex_cont)
+                                     nBdy, readStart, readEnd, bdyIdxToID_cont, idToBdyIdx_cont)
 
-      call mpi_allgather( nbdy, 1, MPI_INTEGER, nbdy_global, 1, MPI_INTEGER, domain % dm_dminfo % comm, ierr )
-      call mpi_allgather( readEnd - readStart, 1, MPI_INTEGER, nread_global, 1, MPI_INTEGER, domain % dm_dminfo % comm, ierr )
+      call mpas_log_write('Gathering nbdy read and contiguous read regions...')
+      call mpi_allgather( nBdy, 1, MPI_INTEGER, nBdy_global, 1, MPI_INTEGER, domain % dminfo % comm, ierr )
+      call mpi_allgather( readEnd - readStart + 1, 1, MPI_INTEGER, nread_global, 1, MPI_INTEGER, domain % dminfo % comm, ierr )
 
-      ! Do cummulative sum (exclusive) for nbdy and (inclusive) for nread
+      ! Do cummulative sum (exclusive) for nBdy and (inclusive) for nread
       ! TODO: consider using the same buffer for message gather and cummulative sums
-      nbdy_csum(1) = 0
-      nbdy_csum(2:nprocs) = nbdy_global(1:nprocs - 1)
+      nBdy_csum(1) = 0
+      nBdy_csum(2:nprocs) = nBdy_global(1:nprocs - 1)
       do i = 3, nprocs
-        nbdy_csum(i) = nbdy_csum(i-1) + nbdy_csum(i)
+        nBdy_csum(i) = nBdy_csum(i-1) + nBdy_csum(i)
       end do
 
-      nbdy_csum(1:nprocs) = nbdy_global(1:nprocs)
+      nread_csum(1:nprocs) = nread_global(1:nprocs)
       do i = 2, nprocs
-        nbdy_csum(i) = nbdy_csum(i-1) + nbdy_csum(i)
+        nread_csum(i) = nread_csum(i-1) + nread_csum(i)
       end do
 
       ! Convert to global space by adding the cummulative sum
-      idToBdyIndex_cont(:) = idToBdyIndex_cont(:) + nbdy_csum(proc)
+      idToBdyIdx_cont(:) = idToBdyIdx_cont(:) + nBdy_csum(proc)
 
+      call mpas_log_write('Reading ' // bdyMaskDimName // ' for current block indices...')
       ! Also read in the bdy mask for this block
-      call MPAS_io_set_var_indices(mesh_handle, bdyMaskDimName, indexToID_block, ierr=ierr)
+      allocate(bdyMask_block(nown))
+      call MPAS_io_set_var_indices(mesh_handle, bdyMaskDimName, indexToID_block(1:nown), ierr=ierr)
       call mpas_io_get_var(mesh_handle, bdyMaskDimName, bdyMask_block, ierr)
 
       call mpas_io_close(mesh_handle)
@@ -536,16 +529,18 @@ contains
         if (bdyMask_block(i) > 0) then
           j = j + 1
           ! May be a little slow for constantly regenerating the mask
-          curr_proc = findloc(nread_csum >= indexToID_block(i), value=.true.)
+          curr_proc = findloc(nread_csum >= indexToID_block(i), value=.true., dim=1)
           nreqbyproc_block(curr_proc) = 1
-          reqindices_block(curr_proc) % insert(indexToID_block(i), i, j)
+          call reqindices_block(curr_proc) % insert(indexToID_block(i), i, j)
         end if
       end do
       deallocate(bdyMask_block)
       nBdy_block = j
 
+      call mpas_log_write('Calculating number of requests across all ranks...')
       call mpas_dmpar_sum_int_array( domain % dminfo, nprocs, nreqbyproc_block, nreqbyproc_global )
 
+      call mpas_log_write('Sending requests for ids...')
       ! Send indices we own to process that read them in (msg tag 0)
       do curr_proc = 1, nprocs
         if (associated(reqindices_block(curr_proc) % head) .and.&
@@ -554,25 +549,32 @@ contains
            call mpi_isend( reqindices_block(curr_proc) % arr(:,1), &
                            size(reqindices_block(curr_proc) % arr, 1), &
                            MPI_INTEGER, &
-                           curr_proc, 0, &
+                           curr_proc - 1, 0, &
                            domain % dminfo % comm, &
-                           requests(curr_proc,1))
+                           requests(curr_proc,1), ierr)
         end if
       end do
 
+      call mpas_log_write('Receiving requests for ids...')
       ! Receive indices we read in from processes that own them (msg tag 0)
       do curr_proc = 1, nreqbyproc_global(proc)
         ! This effectively serializes the non-blocking send that happened
-        call mpi_probe(MPI_ANY_SOURCE, 0, domain % dminfo % comm, probe_status)
-        call mpi_get_count(probe_status, MPI_INTEGER, i)
+        call mpi_probe(MPI_ANY_SOURCE, 0, domain % dminfo % comm, probe_status, ierr)
+        call mpi_get_count(probe_status, MPI_INTEGER, i, ierr)
 
         ! We are only keeping the indices
-        allocate(reqindices_global(curr_proc) % arr(i))
-        call mpi_recv( reqindices_global(curr_proc) % arr, i, MPI_INTEGER, &
-                       probe_status % mpi_source, 0, domain % dminfo % comm)
+        allocate(reqindices_global(curr_proc) % arr(i,1))
+        call mpi_recv( reqindices_global(curr_proc) % arr(:,1), i, MPI_INTEGER, &
+#ifdef MPAS_USE_MPI_F08
+                       probe_status % mpi_source, &
+#else
+                       probe_status(MPI_SOURCE), &
+#endif
+                       0, domain % dminfo % comm, MPI_STATUS_IGNORE, ierr)
       end do
 
       ! Respond to requests (msg tag 1)
+      call mpas_log_write('Sending responses of bdy indices...')
       do curr_proc = 1, nprocs
         if (associated(reqindices_global(curr_proc) % arr)) then
           i = 0
@@ -581,16 +583,17 @@ contains
           end if
           ! Send bdy index (already in global space) as indexed by the 
           ! requested index, adjusted by the start of the contiguous read
-          call mpi_isend(idToBdyIndex_cont(reqindices_global(curr_proc) % arr - i), &
-                         size(reqindices_global(curr_proc) % arr), &
+          call mpi_isend(idToBdyIdx_cont(reqindices_global(curr_proc) % arr(:,1) - i), &
+                         size(reqindices_global(curr_proc) % arr, 1), &
                          MPI_INTEGER, &
-                         curr_proc, 1, &
+                         curr_proc - 1, 1, &
                          domain % dminfo % comm, &
-                         requests(curr_proc, 2))
+                         requests(curr_proc, 2), ierr)
         end if
       end do
 
       ! Receive responses for our own requests that we sent out (msg tag 1)
+      call mpas_log_write('Receiving responses of bdy indices...')
       do curr_proc = 1, nprocs
         if (associated(reqindices_block(curr_proc) % head) .and.&
             associated(reqindices_block(curr_proc) % tail) ) then
@@ -598,27 +601,30 @@ contains
           call mpi_irecv(reqindices_block(curr_proc) % arr(:,4), &
                          size(reqindices_block(curr_proc) % arr, 1), &
                          MPI_INTEGER, &
-                         curr_proc, 1 &
+                         curr_proc - 1, 1, &
                          domain % dminfo % comm, &
-                         requests(curr_proc,1))
+                         requests(curr_proc,1), ierr)
         end if
       end do
 
       ! Wait for sends and recvs to clear for current non-blocking set
-      call mpi_waitall( nprocs * 2, reshape(requests, [nprocs*2]), MPI_STATUSES_IGNORE)
+      call mpas_log_write('Waiting for all communication to finalize...')
+      call mpi_waitall( nprocs, requests(:,1), MPI_STATUSES_IGNORE, ierr) !reshape(requests, [nprocs*2]),
+      call mpi_waitall( nprocs, requests(:,2), MPI_STATUSES_IGNORE, ierr) !reshape(requests, [nprocs*2]),
 
       ! The reqindices_block valid arrays have the mappings now
+      call mpas_log_write('Creating 1D integer fields...')
       call create_mapping_field( block % allFields, bdyIdxToIDName, decompDimName, nBdy_block )
       call create_mapping_field( block % allFields, bdyIdxToIDName // '_blk', decompDimName, nBdy_block )
       call create_mapping_field( block % allFields, idToBdyIdxName, globalDimName, nown )
       call create_mapping_field( block % allFields, idToBdyIdxName // '_blk', globalDimName, nown )
 
-      call mpas_pool_get_array( block % allFields, )
       call mpas_pool_get_array( block % allFields, bdyIdxToIDName, bdyIdxToID )
       call mpas_pool_get_array( block % allFields, bdyIdxToIDName // '_blk', bdyIdxToID_block )
       call mpas_pool_get_array( block % allFields, idToBdyIdxName, idToBdyIdx )
       call mpas_pool_get_array( block % allFields, idToBdyIdxName // '_blk', idToBdyIdx_block )
 
+      call mpas_log_write('Assigning mapping fields...')
       do curr_proc = 1, nprocs
         if (associated(reqindices_block(curr_proc) % head) .and.&
             associated(reqindices_block(curr_proc) % tail) ) then
@@ -640,7 +646,7 @@ contains
     else
       ! We can simply utilize the block cells owned to directly read the decomposition
       ! Read in values
-      call MPAS_io_set_var_indices(mesh_handle, idToBdyIdxName, indexToID_block, ierr=ierr)
+      call MPAS_io_set_var_indices(mesh_handle, idToBdyIdxName, indexToID_block(1:nown), ierr=ierr)
       call mpas_io_get_var(mesh_handle, idToBdyIdxName, idToBdyIdx, ierr)
 
       nBdy_block = 0
@@ -667,7 +673,6 @@ contains
       call create_mapping_field( block % allFields, idToBdyIdxName, globalDimName, nown )
       call create_mapping_field( block % allFields, idToBdyIdxName // '_blk', globalDimName, nown )
 
-      call mpas_pool_get_array( block % allFields, )
       call mpas_pool_get_array( block % allFields, bdyIdxToIDName, bdyIdxToID )
       call mpas_pool_get_array( block % allFields, bdyIdxToIDName // '_blk', bdyIdxToID_block )
       call mpas_pool_get_array( block % allFields, idToBdyIdxName, idToBdyIdx )
@@ -687,9 +692,12 @@ contains
     end if
 
     ! idToBdyIdx (global index) and bdyIdxToID_block (block index) should exist and be set
+    call mpas_log_write('Gathering owned indices for ' // decompDimName // '...')
     allocate(ownedIndices(nBdy_block))
     do j = 1, nBdy_block
       ! Demonstrate mapping
+      call mpas_log_write('Block $i owns ' // primitive // ' ID $i of bdy ' // primitive // ' index $i', &
+        intArgs=[block%blockID, bdyIdxToID(j), idToBdyIdx(bdyIdxToID_block(j))])
       ownedIndices(j) = idToBdyIdx(bdyIdxToID_block(j))
     end do
   end function mpas_bdy_decomp
@@ -700,25 +708,59 @@ contains
     integer, intent(in) :: dimsize
 
     type (field1dInteger), pointer :: bdy_mapping_field
+    logical :: exists
 
-    allocate(bdy_mapping_field)
-    bdy_mapping_field % fieldName = fieldname
-    bdy_mapping_field % dimNames(1) = dimname
-    bdy_mapping_field % dimSizes(1) = dimsize
+    call mpas_pool_get_field(pool, fieldname, bdy_mapping_field)
+    if (.not. associated(bdy_mapping_field)) then
+      exists = .false.
+    else
+      exists = .true.
+    end if
+    if (.not. exists) then
+      allocate(bdy_mapping_field)
+      bdy_mapping_field % fieldName = fieldname
+      bdy_mapping_field % dimNames(1) = dimname
+      bdy_mapping_field % dimSizes(1) = dimsize
+      bdy_mapping_field % isDecomposed = .true.
+      bdy_mapping_field % hasTimeDimension = .false.
+      bdy_mapping_field % isActive = .true.
+      bdy_mapping_field % isVarArray = .false.
+      bdy_mapping_field % isPersistent = .true.
+      allocate(bdy_mapping_field % attLists(1))
+      allocate(bdy_mapping_field % attLists(1) % attList)
+      bdy_mapping_field % attLists(1) % attList % attName = ''
+      bdy_mapping_field % attLists(1) % attList % attType = -1
+      nullify(bdy_mapping_field % attLists(1) % attList % next)
+      nullify(bdy_mapping_field % attLists(1) % attList % attValueIntA)
+      nullify(bdy_mapping_field % attLists(1) % attList % attValueRealA)
+      call mpas_pool_add_field(pool, fieldname, bdy_mapping_field)
+    end if
+    ! Always init
     allocate(bdy_mapping_field % array(dimsize))
-    bdy_mapping_field % isDecomposed = .true.
-    bdy_mapping_field % hasTimeDimension = .false.
-    bdy_mapping_field % isActive = .true.
-    bdy_mapping_field % isVarArray = .false.
-    bdy_mapping_field % isPersistent = .true.
-    allocate(bdy_mapping_field % attLists(1))
-    allocate(bdy_mapping_field % attLists(1) % attList)
-    bdy_mapping_field % attLists(1) % attList % attName = ''
-    bdy_mapping_field % attLists(1) % attList % attType = -1
-    nullify(bdy_mapping_field % attLists(1) % attList % next)
-    nullify(bdy_mapping_field % attLists(1) % attList % attValueIntA)
-    nullify(bdy_mapping_field % attLists(1) % attList % attValueRealA)
-    call mpas_pool_add_field(pool, fieldname, bdy_mapping_field)
   end subroutine create_mapping_field
+
+
+  function mpas_bdy_decomp_cells(block, manager, globalDimSize, numBlocks, ownedIndices) result(ierr)!{{{
+    type (block_type), intent(in) :: block
+    type (mpas_streamManager_type), intent(inout) :: manager
+    integer, intent(in) :: globalDimSize
+    integer, intent(in) :: numBlocks
+    integer, dimension(:), pointer :: ownedIndices
+    integer :: ierr
+
+    ierr = mpas_bdy_decomp( block, ownedIndices, 'cell', 'cells' )
+  end function mpas_bdy_decomp_cells
+
+
+  function mpas_bdy_decomp_edges(block, manager, globalDimSize, numBlocks, ownedIndices) result(ierr)!{{{
+    type (block_type), intent(in) :: block
+    type (mpas_streamManager_type), intent(inout) :: manager
+    integer, intent(in) :: globalDimSize
+    integer, intent(in) :: numBlocks
+    integer, dimension(:), pointer :: ownedIndices
+    integer :: ierr
+
+    ierr = mpas_bdy_decomp( block, ownedIndices, 'cell', 'cells' )
+  end function mpas_bdy_decomp_edges
 
 end module init_atm_calc_bdy_idx
