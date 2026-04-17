@@ -302,9 +302,17 @@ contains
     type(domain_type), pointer :: domain
     integer :: nBdy_local, nBdy
     type (MPAS_IO_Handle_type) :: mesh_handle
+    logical, pointer :: lbcsActive
 
     ierr = 0
     domain => blocklist % domain
+
+    call mpas_pool_get_package(domain % packages, 'lbcsActive', lbcsActive)
+    if (.not. lbcsActive) then
+      call mpas_log_write('  lbcs package not active, skipping computation')
+      call mpas_pool_add_dimension(readableDimensions, nBdyDimName, 0)
+      return
+    end if
 
     ierr = open_mesh_stream( domain, mesh_handle )
     if ( ierr /= 0 ) then
@@ -400,6 +408,7 @@ contains
 
     type(domain_type), pointer :: domain
     logical :: needCompute
+    logical, pointer :: lbcsActive
 
     ! Compute decomposition at runtime
     integer :: nRead, readStart, readEnd, nBdy, nBdy_block
@@ -458,6 +467,15 @@ contains
 
 
     domain => block % domain
+    ierr = 0
+
+    call mpas_pool_get_package(domain % packages, 'lbcsActive', lbcsActive)
+    if (.not. lbcsActive) then
+      call mpas_log_write('  lbcs package not active, skipping decomposition')
+      allocate(ownedIndices(0))
+      return
+    end if
+
     call mpas_pool_get_array( block % allFields, idxToIDName // '_blk', indexToID_block )
     call mpas_pool_get_dimension( block % dimensions, globalDimName // 'Solve', nown )
     ! nown = size(indexToID_block)
@@ -471,7 +489,7 @@ contains
     end if
 
     needCompute = .false.
-    call MPAS_io_inq_var(mesh_handle, decompDimName, ierr=ierr)
+    call MPAS_io_inq_var(mesh_handle, bdyIdxToIDName, ierr=ierr)
     if (ierr /= 0) then
       needCompute = .true.
     end if
