@@ -541,6 +541,8 @@
                         <var name="bdyMaskVertex"/>
                         <var name="bdyCellIndexToCellID", packages="lbcs"/>
                         <var name="cellIDToBdyCellIndex", packages="lbcs"/>
+                        <var name="bdyEdgeIndexToEdgeID", packages="lbcs"/>
+                        <var name="edgeIDToBdyEdgeIndex", packages="lbcs"/>
                         <var name="edgeNormalVectors"/>
                         <var name="localVerticalUnitVectors"/>
                         <var name="cellTangentPlane"/>
@@ -1138,6 +1140,12 @@
 
                 <var name="cellIDToBdyCellIndex" type="integer" dimensions="nCells" default_value="0" units="-" packages="lbcs"
                      description="Map of cellID index in the nCells to nBdyCells index"/>
+
+                <var name="bdyEdgeIndexToEdgeID" type="integer" dimensions="nBdyEdges" default_value="0" units="-" packages="lbcs"
+                     description="Map of only boundary edges to their respective index in the nEdges index"/>
+
+                <var name="edgeIDToBdyEdgeIndex" type="integer" dimensions="nEdges" default_value="0" units="-" packages="lbcs"
+                     description="Map of egdeID index in the nEdges to nBdyEdges index"/>
         </var_struct>
 
         <var_struct name="state" time_levs="1">
