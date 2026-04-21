@@ -143,7 +143,7 @@ contains
     integer :: ioType, ierr
 
     ierr = 0
-    ierr = domain % core % get_mesh_stream( domain % configs, streamInfo, streamID )
+    ierr = domain % core % get_mesh_stream( domain % configs, streamInfo, streamID, ierr )
     call mpas_get_stream_filename(domain % streamManager, streamID, filename=filename)
 
     ! Determine stream io_type
