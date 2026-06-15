@@ -403,15 +403,21 @@ contains
   !
   !  function mpas_bdy_decomp
   !
-  !> \brief   Computed number of boundary cells
+  !> \brief   Computed decomposition of provided primitive based on mask
   !> \author  Anthony Islas
   !> \date    09 March 2026
   !> \details 
-  !>  Compute the number of boundary cells across the entire domain
+  !>  Computed decomposition of provided primitive based on mask across
+  !>  the entire domain. This function will calculate the owned indices
+  !>  of this block, and the mapping arrays between the block indices to
+  !>  to the boundary subset.
   !
   !-----------------------------------------------------------------------
   function mpas_bdy_decomp(block, ownedIndices, &
-                           primitive, primitivePlural ) result(ierr)
+                           primitive, primitivePlural, &
+                           bdyIdxToID,       idToBdyIdx, &
+                           bdyIdxToID_block, idToBdyIdx_block &
+                           ) result(ierr)
 #ifdef MPAS_USE_MPI_F08
     use mpi_f08
 #else
@@ -457,10 +463,8 @@ contains
     type (MPAS_IO_Handle_type) :: mesh_handle
 
     ! Generated field
-    integer, dimension(:,:), pointer :: bdyIdxMap
-    integer, dimension(:), pointer :: bdyIdxToID, idToBdyIdx
-    integer, dimension(:), pointer :: bdyIdxToID_block, idToBdyIdx_block
-
+    integer, dimension(:), pointer, optional :: bdyIdxToID, idToBdyIdx
+    integer, dimension(:), pointer, optional :: bdyIdxToID_block, idToBdyIdx_block
 
     ! Names
     ! IN (Cell,Edge,Vert(ex|ices))
@@ -618,7 +622,7 @@ contains
 #else
         curr_proc = probe_status(MPI_SOURCE) + 1
 #endif
-        allocate(reqindices_global(curr_proc) % arr(i,1))
+        allocate(reqindices_global(curr_proc) % arr(i,2))
         call mpas_log_write('  Receiving request of size $i from rank $i', intArgs=[i, curr_proc - 1])
         call mpi_recv( reqindices_global(curr_proc) % arr(:,1), &
                        i, &
@@ -626,23 +630,6 @@ contains
                        curr_proc - 1, 0, &
                        domain % dminfo % comm, &
                        MPI_STATUS_IGNORE, ierr)
-      end do
-
-
-      ! Receive responses for our own requests that we sent out (msg tag 1)
-      call mpas_log_write('Receiving responses of bdy indices...')
-      do curr_proc = 1, nprocs
-        if (associated(reqindices_block(curr_proc) % head) .and.&
-            associated(reqindices_block(curr_proc) % tail) ) then
-          ! Re-use the requests first slot which uses the same indices
-          call mpas_log_write('  Receiving response of size $i from rank $i', intArgs=[size(reqindices_block(curr_proc) % arr, 1), curr_proc - 1])
-          call mpi_irecv(reqindices_block(curr_proc) % arr(:,4), &
-                         size(reqindices_block(curr_proc) % arr, 1), &
-                         MPI_INTEGER, &
-                         curr_proc - 1, 1, &
-                         domain % dminfo % comm, &
-                         requests(curr_proc,1), ierr)
-        end if
       end do
 
       ! Respond to requests (msg tag 1)
@@ -660,12 +647,31 @@ contains
           call mpas_log_write('  Data:')
           call debug_print_intarr(idToBdyIdx_cont(reqindices_global(curr_proc) % arr(:,1) - i))
 
-          call mpi_isend(idToBdyIdx_cont(reqindices_global(curr_proc) % arr(:,1) - i), &
+          ! Pack data into contiguous array
+          reqindices_global(curr_proc) % arr(:,2) = idToBdyIdx_cont(reqindices_global(curr_proc) % arr(:,1) - i)
+
+          call mpi_isend(reqindices_global(curr_proc) % arr(:,2), &
                          size(reqindices_global(curr_proc) % arr, 1), &
                          MPI_INTEGER, &
                          curr_proc - 1, 1, &
                          domain % dminfo % comm, &
                          requests(curr_proc, 2), ierr)
+        end if
+      end do
+
+      ! Receive responses for our own requests that we sent out (msg tag 1)
+      call mpas_log_write('Receiving responses of bdy indices...')
+      do curr_proc = 1, nprocs
+        if (associated(reqindices_block(curr_proc) % head) .and.&
+            associated(reqindices_block(curr_proc) % tail) ) then
+          ! Re-use the requests first slot which uses the same indices
+          call mpas_log_write('  Receiving response of size $i from rank $i', intArgs=[size(reqindices_block(curr_proc) % arr, 1), curr_proc - 1])
+          call mpi_irecv(reqindices_block(curr_proc) % arr(:,4), &
+                         size(reqindices_block(curr_proc) % arr, 1), &
+                         MPI_INTEGER, &
+                         curr_proc - 1, 1, &
+                         domain % dminfo % comm, &
+                         requests(curr_proc,1), ierr)
         end if
       end do
 
@@ -684,18 +690,15 @@ contains
       end do
 
       ! The reqindices_block valid arrays have the mappings now
-      call mpas_log_write('Creating mapping integer fields...')
-      ! call create_mapping_field( block % allFields, bdyIdxMapName, globalDimName, nown )
-      call create_mapping_field( block % allStructs, bdyIdxToIDName, decompDimName, nBdy_block )
-      call create_mapping_field( block % allStructs, bdyIdxToIDName // '_blk', decompDimName, nBdy_block )
-      call create_mapping_field( block % allStructs, idToBdyIdxName, globalDimName, nown )
-      call create_mapping_field( block % allStructs, idToBdyIdxName // '_blk', globalDimName, nown )
-
-      ! call mpas_pool_get_array( block % allStructs, bdyIdxMapName, bdyIdxMap )
-      call mpas_pool_get_array( block % allStructs, bdyIdxToIDName, bdyIdxToID )
-      call mpas_pool_get_array( block % allStructs, bdyIdxToIDName // '_blk', bdyIdxToID_block )
-      call mpas_pool_get_array( block % allStructs, idToBdyIdxName, idToBdyIdx )
-      call mpas_pool_get_array( block % allStructs, idToBdyIdxName // '_blk', idToBdyIdx_block )
+      if ( present(bdyIdxToID) .and. present(bdyIdxToID_block) .and.&
+           present(idToBdyIdx) .and. present(idToBdyIdx_block) ) then
+        call mpas_log_write('Creating mapping integer fields...')
+        allocate(bdyIdxToID(nBdy_block))
+        allocate(bdyIdxToID_block(nBdy_block))
+        allocate(idToBdyIdx(nown))
+        allocate(idToBdyIdx_block(nown))
+      end if
+      allocate(ownedIndices(nBdy_block))
 
       call mpas_log_write('Assigning mapping fields...')
       do curr_proc = 1, nprocs
@@ -708,18 +711,23 @@ contains
             j     = reqindices_block(curr_proc) % head % arr(k,3)
             bdyid = reqindices_block(curr_proc) % head % arr(k,4)
 
-            ! ! Minimum required info to reconstruct
-            ! bdyIdxMap(i,1) = bdyid
-            ! bdyIdxMap(j,2) = i
+            if ( present(bdyIdxToID) .and. present(bdyIdxToID_block) .and.&
+                present(idToBdyIdx) .and. present(idToBdyIdx_block) ) then
+              bdyIdxToID(j) = id
+              idToBdyIdx(i) = bdyid
+              ! Reindexed mapping
+              bdyIdxToID_block(j) = i
+              idToBdyIdx_block(i) = j
+            end if
 
-            bdyIdxToID(j) = id
-            idToBdyIdx(i) = bdyid
-            ! Reindexed mapping
-            bdyIdxToID_block(j) = i
-            idToBdyIdx_block(i) = j
+            ! Get owned indices
+            call mpas_log_write('Block $i owns ' // primitive // ' ID $i of bdy ' // primitive // ' index $i', &
+                                intArgs=[block%blockID, id, bdyid])
+            ownedIndices(j) = bdyid
           end do
         end if
       end do
+
     else
       ! We can simply utilize the block cells owned to directly read the decomposition
       ! Read in values
@@ -744,46 +752,49 @@ contains
 
       call mpas_io_close(mesh_handle)
 
-      ! The reqindices_block valid arrays have the mappings now
-      ! call create_mapping_field( block % allFields, bdyIdxMapName, globalDimName, nown )
-      call create_mapping_field( block % allFields, bdyIdxToIDName, decompDimName, nBdy_block )
-      call create_mapping_field( block % allFields, bdyIdxToIDName // '_blk', decompDimName, nBdy_block )
-      call create_mapping_field( block % allFields, idToBdyIdxName, globalDimName, nown )
-      call create_mapping_field( block % allFields, idToBdyIdxName // '_blk', globalDimName, nown )
+      if ( present(bdyIdxToID) .and. present(bdyIdxToID_block) .and.&
+           present(idToBdyIdx) .and. present(idToBdyIdx_block) ) then
+        call mpas_log_write('Creating mapping integer fields...')
+        allocate(bdyIdxToID(nBdy_block))
+        allocate(bdyIdxToID_block(nBdy_block))
+        allocate(idToBdyIdx(nown))
+        allocate(idToBdyIdx_block(nown))
+      end if
+      allocate(ownedIndices(nBdy_block))
 
-      ! call mpas_pool_get_array( block % allFields, bdyIdxMapName, bdyIdxMap )
-      call mpas_pool_get_array( block % allFields, bdyIdxToIDName, bdyIdxToID )
-      call mpas_pool_get_array( block % allFields, bdyIdxToIDName // '_blk', bdyIdxToID_block )
-      call mpas_pool_get_array( block % allFields, idToBdyIdxName, idToBdyIdx )
-      call mpas_pool_get_array( block % allFields, idToBdyIdxName // '_blk', idToBdyIdx_block )
+    
+      call mpas_log_write('Creating mapping integer fields...')
+      allocate(bdyIdxToID(nBdy_block))
+      allocate(bdyIdxToID_block(nBdy_block))
+      allocate(idToBdyIdx(nown))
+      allocate(idToBdyIdx_block(nown))
 
-      do j = 1, nBdy_block !size(bdyIdxToID)
+      do j = 1, nBdy_block
         i     = bdyIdxToID_local(j)
         id    = bdyIdxToID(j)
         bdyid = idToBdyIdx(i)
 
-        ! Minimum required info to reconstruct
-        bdyIdxMap(i,1) = bdyid
-        bdyIdxMap(j,2) = i
-        bdyIdxToID(j) = id
-        idToBdyIdx(i) = bdyid
-        ! Reindexed mapping
-        bdyIdxToID_block(j) = i
-        idToBdyIdx_block(i) = j
+        if ( present(bdyIdxToID) .and. present(bdyIdxToID_block) .and.&
+             present(idToBdyIdx) .and. present(idToBdyIdx_block) ) then
+          bdyIdxToID(j) = id
+          idToBdyIdx(i) = bdyid
+          ! Reindexed mapping
+          bdyIdxToID_block(j) = i
+          idToBdyIdx_block(i) = j
+        end if
+
+        ! Get owned indices
+        call mpas_log_write('Block $i owns ' // primitive // ' ID $i of bdy ' // primitive // ' index $i', &
+                            intArgs=[block%blockID, id, bdyid])
+        ownedIndices(j) = bdyid
       end do
+
     end if
 
-    ! idToBdyIdx (global index) and bdyIdxToID_block (block index) should exist and be set
-    call mpas_log_write('Gathering owned indices for ' // decompDimName // '...')
-    allocate(ownedIndices(nBdy_block))
-    do j = 1, nBdy_block
-      ! Demonstrate mapping
-      call mpas_log_write('Block $i owns ' // primitive // ' ID $i of bdy ' // primitive // ' index $i', &
-        intArgs=[block%blockID, bdyIdxToID(j), idToBdyIdx(bdyIdxToID_block(j))])
-        ! intArgs=[block%blockID, indexToID_block(bdyIdxMap(j,2)), bdyIdxMap(bdyIdxMap(j,2),1)])
-      ownedIndices(j) = idToBdyIdx(bdyIdxToID_block(j)) ! bdyIdxMap(bdyIdxMap(j,2),1)
-    end do
+    ierr = 0
   end function mpas_bdy_decomp
+
+
 
   subroutine create_mapping_field(pool, fieldname, dimname, dimsize)
     type (mpas_pool_type), intent(inout) :: pool
