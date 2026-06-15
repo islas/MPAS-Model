@@ -98,6 +98,7 @@ contains
       arr(i,1) = node % id
       arr(i,2) = node % id_local_idx
       arr(i,3) = node % bdy_local_idx
+      arr(i,4) = -1
       node => node % next
       i = i + 1
     end do
