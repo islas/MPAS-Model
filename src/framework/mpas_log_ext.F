@@ -3,29 +3,11 @@
 !  mpas_log
 !
 !> \MPAS message logging manager
-!> \author Matt Hoffman
-!> \date   14 February 2017
+!> \author Anthony Islas
+!> \date   Oct 22 2026
 !> \details
-!>  This module contains the routines for managing the writing of messages
-!>  to log files.
-!>  The log module operates around a variable named mpas_log_info that contains
-!>  all of the external information needed to perform logging operations
-!>  for the current model configuration.
-!>  mpas_log_info is a module level pointer to the active core's mpas_log_type
-!>  instance.  This allows the core's domain instance to "own" the log manager,
-!>  while the log module has internal access to it.  This approach has two
-!>  benefits:
-!>  1. Calls to mpas_write_log do not require any configuration metadata
-!>  (e.g., a unit number) to be passed in, simplifying the call API.
-!>  2. Because the log module uses a pointer to a mpas_log_type instance,
-!>  different instances can be swapped in and out from higher levels of
-!>  the modeling framework during execution.  This is necessary to allow
-!>  multiple different MPAS cores to operate in the same climate model,
-!>  but would also apply to multiple MPAS cores running in a single MPAS
-!>  executable (if this is ever supported), or multiple domain instances
-!>  of the same MPAS core running together.  (It is the responsibility of
-!>  the higher-level driver code(s) to manage any swapping of mpas_log_type
-!>  instances.)
+!>  This module contains routines for providing logging extensions that require
+!>  bootstrapping initialization before the logging module.
 !
 !-----------------------------------------------------------------------
 
